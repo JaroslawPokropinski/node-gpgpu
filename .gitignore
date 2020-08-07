@@ -1,0 +1,10 @@
+# Built files
+/node_modules
+/build/Release
+/dist
+
+# Vscode enironment
+/.vscode
+
+# Files for experimentation
+/cpp example

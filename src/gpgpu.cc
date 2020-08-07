@@ -1,0 +1,202 @@
+#include "gpgpu.h"
+#include <memory>
+
+using namespace Napi;
+
+Gpgpu::Gpgpu(const Napi::CallbackInfo &info) : ObjectWrap(info)
+{
+    // Get platform and device information
+    cl_platform_id platform_id = NULL;
+    cl_uint ret_num_devices;
+    cl_uint ret_num_platforms;
+    cl_int ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
+    if (ret != CL_SUCCESS)
+    {
+        if (ret == -1001)
+        {
+            printf("%s", "No valid ICDs found");
+        }
+        else
+        {
+            printf("clGetPlatformIDs failed with: %d", ret);
+        }
+    }
+
+    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1,
+                         &deviceId, &ret_num_devices);
+
+    // Create an OpenCL context
+    this->_context = clCreateContext(NULL, 1, &deviceId, NULL, NULL, &ret);
+
+    // Create a command queue
+    this->_command_queue = clCreateCommandQueue(this->_context, deviceId, 0, &ret);
+
+    this->_greeterName = info[0].As<Napi::String>().Utf8Value();
+}
+
+Gpgpu::~Gpgpu()
+{
+    clFlush(_command_queue);
+    clFinish(_command_queue);
+    clReleaseContext(_context);
+}
+
+Napi::Value Gpgpu::Greet(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 1)
+    {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[0].IsString())
+    {
+        Napi::TypeError::New(env, "You need to introduce yourself to greet")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    Napi::String name = info[0].As<Napi::String>();
+
+    printf("Hello to you %s\n", name.Utf8Value().c_str());
+    printf("I am %s\n", this->_greeterName.c_str());
+
+    return Napi::String::New(env, this->_greeterName);
+}
+
+Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+
+    if (info.Length() < 2)
+    {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[0].IsString())
+    {
+        Napi::TypeError::New(env, "Failed to pass parsed code as a string")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[1].IsArray())
+    {
+        Napi::TypeError::New(env, "Failed to pass types")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    Napi::Array arr = info[1].As<Napi::Array>();
+    std::shared_ptr<std::string[]> types(new std::string[arr.Length()]);
+    for (size_t i = 0; i < arr.Length(); i++)
+    {
+        types[i] = arr.Get(i).As<Napi::String>().Utf8Value();
+    }
+
+    Napi::String func = info[0].As<Napi::String>();
+    printf("Got a function %s\n", func.Utf8Value().c_str());
+
+    cl_int ret;
+    const size_t codeLength = func.Utf8Value().length();
+
+    std::unique_ptr<char[]> code(new char[codeLength + 1]);
+    strcpy(code.get(), func.Utf8Value().c_str());
+
+    const char *sources[] = {code.get()};
+
+    cl_program program = clCreateProgramWithSource(_context, 1,
+                                                   sources, &codeLength, &ret);
+    ret = clBuildProgram(program, 1, &deviceId, NULL, NULL, NULL);
+    if (ret != CL_SUCCESS)
+    {
+        printf("clBuildProgram returned %d\n", ret);
+        size_t len = 0;
+        ret = clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
+        char *buffer = (char *)calloc(len, sizeof(char));
+        ret = clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
+        printf("clGetProgramBuildInfo returned %d\n", ret);
+        printf("%s", buffer);
+        return (Napi::Value)Napi::Number::New(env, 1.0);
+    }
+    // Create the OpenCL kernel
+    cl_kernel kernel = clCreateKernel(program, "kernelFunc", &ret);
+    printf("clCreateKernel returned %d\n", ret);
+
+    return Napi::Function::New(env, [=](const CallbackInfo &info) {
+        printf("Calling kernel function\n");
+        cl_int ret;
+        // Set the arguments of the kernel
+        std::unique_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);
+        for (size_t i = 0; i < info.Length(); i++)
+        {
+            if (!info[i].IsTypedArray())
+            {
+                Napi::TypeError::New(env, "Bad argument type")
+                    .ThrowAsJavaScriptException();
+                return env.Null();
+            }
+            Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
+
+            mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE,
+                                         tarr.ByteLength(), NULL, &ret);
+            if (types[i] == "read" || types[i] == "readwrite")
+            {
+                ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
+                                           tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
+            }
+            ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
+            printf("clSetKernelArg returned %d\n", ret);
+        }
+
+        // Execute the OpenCL kernel on the list
+        size_t global_item_size = 1000; // Process the entire lists
+        size_t local_item_size = 1;     // Divide work items into groups of 64
+        ret = clEnqueueNDRangeKernel(_command_queue, kernel, 1, NULL,
+                                     &global_item_size, &local_item_size, 0, NULL, NULL);
+
+        printf("clEnqueueNDRangeKernel returned %d\n", ret);
+        // Read the memory buffer C on the device to the local variable C
+        for (size_t i = 0; i < info.Length(); i++)
+        {
+            // const char *type = arr.Get(0).As<Napi::String>().Utf8Value().c_str();
+            // printf("%s\n", type);
+            if (types[i] == "write" || types[i] == "readwrite")
+            {
+                Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
+                // float *a = (float *)malloc(tarr.ByteLength());
+                ret = clEnqueueReadBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
+                                          tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
+                printf("clEnqueueReadBuffer returned %d\n", ret);
+            }
+        }
+        printf("Ending kernel function\n");
+        return (Napi::Value)Napi::Number::New(env, 0.0);
+    });
+
+    clReleaseKernel(kernel);
+    clReleaseProgram(program);
+
+    return func;
+}
+
+Napi::Function Gpgpu::GetClass(Napi::Env env)
+{
+    return DefineClass(env, "Gpgpu", {
+                                         Gpgpu::InstanceMethod("greet", &Gpgpu::Greet),
+                                         Gpgpu::InstanceMethod("createKernel", &Gpgpu::CreateKernel),
+                                     });
+}
+
+Napi::Object Init(Napi::Env env, Napi::Object exports)
+{
+    Napi::String name = Napi::String::New(env, "Gpgpu");
+    exports.Set(name, Gpgpu::GetClass(env));
+    return exports;
+}
+
+NODE_API_MODULE(addon, Init)

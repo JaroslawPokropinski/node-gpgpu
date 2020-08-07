@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2015
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(Programming)", "..\Programming", "{6AE1777F-91DA-6AC6-2A1D-C0BC206D1934}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(Projects)", "..\Programming\Projects", "{036C878C-8F75-E763-DD1F-CEC1F12A6254}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node-addon-api)", "..\Programming\Projects\node-gpgpu\node_modules\node-addon-api", "{308D4A9B-380D-E5D5-147D-56ACE9A413BC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node-gpgpu)", "..\Programming\Projects\node-gpgpu", "{919C9473-BB20-C8F2-360C-030068A23B7C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node_modules)", "..\Programming\Projects\node-gpgpu\node_modules", "{9D27CFFE-327C-7A9E-8602-2A5CFA76892C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(src)", "..\Programming\Projects\node-gpgpu\node_modules\node-addon-api\src", "{6436A24F-CC0B-A843-7AB5-5BDDB2522893}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gpgpu-native", "gpgpu-native.vcxproj", "{A9906175-524E-CC94-1263-B9A8EFF3DDBC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{18198126-E864-F11F-C983-C82D154F97B8} = {18198126-E864-F11F-C983-C82D154F97B8}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nothing", "..\node_modules\node-addon-api\src\nothing.vcxproj", "{18198126-E864-F11F-C983-C82D154F97B8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{18198126-E864-F11F-C983-C82D154F97B8}.Debug|x64.ActiveCfg = Debug|x64
+		{18198126-E864-F11F-C983-C82D154F97B8}.Debug|x64.Build.0 = Debug|x64
+		{18198126-E864-F11F-C983-C82D154F97B8}.Release|x64.ActiveCfg = Release|x64
+		{18198126-E864-F11F-C983-C82D154F97B8}.Release|x64.Build.0 = Release|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Debug|x64.ActiveCfg = Debug|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Debug|x64.Build.0 = Debug|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Release|x64.ActiveCfg = Release|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{036C878C-8F75-E763-DD1F-CEC1F12A6254} = {6AE1777F-91DA-6AC6-2A1D-C0BC206D1934}
+		{919C9473-BB20-C8F2-360C-030068A23B7C} = {036C878C-8F75-E763-DD1F-CEC1F12A6254}
+		{6436A24F-CC0B-A843-7AB5-5BDDB2522893} = {308D4A9B-380D-E5D5-147D-56ACE9A413BC}
+		{9D27CFFE-327C-7A9E-8602-2A5CFA76892C} = {919C9473-BB20-C8F2-360C-030068A23B7C}
+		{308D4A9B-380D-E5D5-147D-56ACE9A413BC} = {9D27CFFE-327C-7A9E-8602-2A5CFA76892C}
+		{18198126-E864-F11F-C983-C82D154F97B8} = {6436A24F-CC0B-A843-7AB5-5BDDB2522893}
+	EndGlobalSection
+EndGlobal
