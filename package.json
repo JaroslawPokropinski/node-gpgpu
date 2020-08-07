@@ -2,9 +2,7 @@
     "main": "lib/binding.js",
     "dependencies": {
         "acorn": "^7.4.0",
-        "acorn-walk": "^7.2.0",
         "esprima": "^4.0.1",
-        "esprima-walk": "^0.1.0",
         "node-addon-api": "^1.1.0",
         "recast": "^0.19.1"
     },
@@ -14,13 +12,12 @@
     },
     "gypfile": true,
     "name": "gpgpu",
-    "version": "1.0.0",
-    "author": "",
+    "version": "0.0.1",
+    "author": "JaroslawPokropinski",
     "license": "ISC",
-    "description": "",
+    "description": "Node.js library for gpu acceleration using pure javascript",
     "devDependencies": {
         "@types/esprima": "^4.0.2",
-        "@types/esprima-walk": "^0.1.1",
         "@types/node": "^7.0.22",
         "typescript": "^3.9.0"
     }
