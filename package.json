@@ -3,7 +3,7 @@
     "dependencies": {
         "acorn": "^7.4.0",
         "esprima": "^4.0.1",
-        "node-addon-api": "^1.1.0",
+        "node-addon-api": "^3.0.0",
         "recast": "^0.19.1"
     },
     "scripts": {
@@ -18,7 +18,13 @@
     "description": "Node.js library for gpu acceleration using pure javascript",
     "devDependencies": {
         "@types/esprima": "^4.0.2",
-        "@types/node": "^7.0.22",
+        "@types/node": "^12.12.6",
+        "@typescript-eslint/eslint-plugin": "^3.8.0",
+        "@typescript-eslint/parser": "^3.8.0",
+        "eslint": "^7.6.0",
+        "eslint-config-prettier": "^6.11.0",
+        "eslint-plugin-prettier": "^3.1.4",
+        "prettier": "^2.0.5",
         "typescript": "^3.9.0"
     }
 }

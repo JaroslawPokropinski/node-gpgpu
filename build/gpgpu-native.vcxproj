@@ -141,8 +141,8 @@
     <ClCompile Include="C:\Users\jarek_junnocu\AppData\Local\nvs\node\12.13.1\x64\node_modules\node-gyp\src\win_delay_load_hook.cc"/>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\node_modules\node-addon-api\src\nothing.vcxproj">
-      <Project>{18198126-E864-F11F-C983-C82D154F97B8}</Project>
+    <ProjectReference Include="..\node_modules\node-addon-api\nothing.vcxproj">
+      <Project>{0CF728E0-202F-70DA-123C-9081805B1EFF}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>

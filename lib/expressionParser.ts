@@ -1,7 +1,7 @@
 import * as recast from 'recast';
 
 export function parseExpression(ast: recast.types.ASTNode): string {
-  let val: string | null = null;;
+  let val: string | null = null;
   recast.visit(ast, {
     visitIdentifier(path) {
       val = path.node.name;
@@ -17,11 +17,11 @@ export function parseExpression(ast: recast.types.ASTNode): string {
     },
     visitMemberExpression(path) {
       if (path.node.computed) {
-        val = `${parseExpression(path.node.object)}[${parseExpression(path.node.property)}]`
+        val = `${parseExpression(path.node.object)}[${parseExpression(path.node.property)}]`;
       } else if (path.node.object.type === 'ThisExpression') {
-        val = parseExpression(path.node.property)
+        val = parseExpression(path.node.property);
       } else {
-        val = `${parseExpression(path.node.object)}.${parseExpression(path.node.property)}`
+        val = `${parseExpression(path.node.object)}.${parseExpression(path.node.property)}`;
       }
       return false;
     },
@@ -30,12 +30,12 @@ export function parseExpression(ast: recast.types.ASTNode): string {
       return false;
     },
     visitThisExpression() {
-      val = ''
+      val = '';
       return false;
     },
     visitExpression(path) {
-      throw new Error(`Unsupported expression: ${path.node.type}`)
-    }
+      throw new Error(`Unsupported expression: ${path.node.type}`);
+    },
   });
 
   if (val == null) {
