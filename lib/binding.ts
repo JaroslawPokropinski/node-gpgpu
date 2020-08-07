@@ -5,7 +5,7 @@ const addon = require('../build/Release/gpgpu-native');
 
 interface IGpgpuNative {
   greet(strName: string): string;
-  createKernel(parserCode: string, types: string[]): (...args: any[]) => void;
+  createKernel(parserCode: string, types: string[]): (ksize: number[]) => (...args: unknown[]) => void;
 }
 
 class Gpgpu {
@@ -17,12 +17,16 @@ class Gpgpu {
     return this._addonInstance.greet(strName);
   }
 
-  createKernel(func: (...args: unknown[]) => void, types: FunctionType[]): (...args: unknown[]) => void {
-    console.log(types.map((t) => t.readWrite));
-    return this._addonInstance.createKernel(
-      translateFunction(func /*, types*/),
-      types.map((t) => t.readWrite),
-    );
+  createKernel(
+    func: (...args: unknown[]) => void,
+    types: FunctionType[],
+  ): { setSize: (ksize: number[]) => (...args: unknown[]) => void } {
+    return {
+      setSize: this._addonInstance.createKernel(
+        translateFunction(func /*, types*/),
+        types.map((t) => t.readWrite),
+      ),
+    };
   }
 
   // private members

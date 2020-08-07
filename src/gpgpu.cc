@@ -127,55 +127,83 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
     cl_kernel kernel = clCreateKernel(program, "kernelFunc", &ret);
     printf("clCreateKernel returned %d\n", ret);
 
-    return Napi::Function::New(env, [=](const CallbackInfo &info) {
-        printf("Calling kernel function\n");
-        cl_int ret;
-        // Set the arguments of the kernel
-        std::unique_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);
-        for (size_t i = 0; i < info.Length(); i++)
+    return Napi::Function::New(env, [=](const CallbackInfo &info2) {
+        if (!info2[0].IsArray())
         {
-            if (!info[i].IsTypedArray())
-            {
-                Napi::TypeError::New(env, "Bad argument type")
-                    .ThrowAsJavaScriptException();
-                return env.Null();
-            }
-            Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
-
-            mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE,
-                                         tarr.ByteLength(), NULL, &ret);
-            if (types[i] == "read" || types[i] == "readwrite")
-            {
-                ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
-                                           tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
-            }
-            ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
-            printf("clSetKernelArg returned %d\n", ret);
+            Napi::TypeError::New(env, "Bad kernel size")
+                .ThrowAsJavaScriptException();
+            return env.Null();
         }
 
-        // Execute the OpenCL kernel on the list
-        size_t global_item_size = 1000; // Process the entire lists
-        size_t local_item_size = 1;     // Divide work items into groups of 64
-        ret = clEnqueueNDRangeKernel(_command_queue, kernel, 1, NULL,
-                                     &global_item_size, &local_item_size, 0, NULL, NULL);
-
-        printf("clEnqueueNDRangeKernel returned %d\n", ret);
-        // Read the memory buffer C on the device to the local variable C
-        for (size_t i = 0; i < info.Length(); i++)
+        if (info2.Length() > 1 && !info2[1].IsArray())
         {
-            // const char *type = arr.Get(0).As<Napi::String>().Utf8Value().c_str();
-            // printf("%s\n", type);
-            if (types[i] == "write" || types[i] == "readwrite")
-            {
-                Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
-                // float *a = (float *)malloc(tarr.ByteLength());
-                ret = clEnqueueReadBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
-                                          tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
-                printf("clEnqueueReadBuffer returned %d\n", ret);
-            }
+            Napi::TypeError::New(env, "Bad group size")
+                .ThrowAsJavaScriptException();
+            return env.Null();
         }
-        printf("Ending kernel function\n");
-        return (Napi::Value)Napi::Number::New(env, 0.0);
+
+        size_t kdim = info2[0].As<Napi::Array>().Length();
+        std::shared_ptr<size_t[]> ksize(new size_t[kdim]);
+
+        std::shared_ptr<size_t[]> groupSize(new size_t[kdim]);
+
+        for (size_t i = 0; i < kdim; i++)
+        {
+            ksize[i] = info2[0].As<Napi::Array>().Get(i).As<Napi::Number>().Int64Value();
+            groupSize[i] = (info2.Length() > 1) ? info2[1].As<Napi::Array>().Get(i).As<Napi::Number>().Int64Value() : 1;
+
+            printf("Kernel size[0] set to %zd\n", ksize[i]);
+        }
+
+        return Napi::Function::New(env, [=](const CallbackInfo &info) {
+                   printf("Calling kernel function\n");
+                   cl_int ret;
+                   // Set the arguments of the kernel
+                   std::unique_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);
+                   for (size_t i = 0; i < info.Length(); i++)
+                   {
+                       if (!info[i].IsTypedArray())
+                       {
+                           Napi::TypeError::New(env, "Bad argument type")
+                               .ThrowAsJavaScriptException();
+                           return env.Null();
+                       }
+                       Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
+
+                       mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE,
+                                                    tarr.ByteLength(), NULL, &ret);
+                       if (types[i] == "read" || types[i] == "readwrite")
+                       {
+                           ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
+                                                      tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
+                       }
+                       ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
+                       printf("clSetKernelArg returned %d\n", ret);
+                   }
+
+                   // Execute the OpenCL kernel on the list
+                   ret = clEnqueueNDRangeKernel(_command_queue, kernel, kdim, NULL,
+                                                ksize.get(), groupSize.get(), 0, NULL, NULL);
+
+                   printf("clEnqueueNDRangeKernel returned %d\n", ret);
+                   // Read the memory buffer C on the device to the local variable C
+                   for (size_t i = 0; i < info.Length(); i++)
+                   {
+                       // const char *type = arr.Get(0).As<Napi::String>().Utf8Value().c_str();
+                       // printf("%s\n", type);
+                       if (types[i] == "write" || types[i] == "readwrite")
+                       {
+                           Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
+                           // float *a = (float *)malloc(tarr.ByteLength());
+                           ret = clEnqueueReadBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
+                                                     tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
+                           printf("clEnqueueReadBuffer returned %d\n", ret);
+                       }
+                   }
+                   printf("Ending kernel function\n");
+                   return env.Null();
+               })
+            .As<Napi::Value>();
     });
 
     clReleaseKernel(kernel);

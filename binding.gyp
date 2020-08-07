@@ -3,9 +3,8 @@
         {
             'target_name': 'gpgpu-native',
             'sources': ['src/gpgpu.cc'],
-            'include_dirs': ["<!@(node -p \"require('node-addon-api').include\")", "$(CUDA_PATH)/include"],
+            'include_dirs': ["<!@(node -p \"require('node-addon-api').include\")"],
             'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],
-            "libraries": ["-l$(CUDA_PATH)/lib/x64/OpenCL"],
             'cflags!': ['-fno-exceptions'],
             'cflags_cc!': ['-fno-exceptions'],
             'xcode_settings': {
@@ -15,7 +14,18 @@
             },
             'msvs_settings': {
                 'VCCLCompilerTool': {'ExceptionHandling': 1},
-            }
+            },
+            'conditions': [
+                ['OS=="linux"', {
+                    "libraries": ["-lOpenCL"]
+                }],
+                ['OS=="win"', {
+                    'include_dirs': [
+                        "$(CUDA_PATH)/include"
+                    ],
+                    "libraries": ["-l$(CUDA_PATH)/lib/x64/OpenCL"]
+                }]
+            ],
         }
     ]
 }
