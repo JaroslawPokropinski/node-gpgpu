@@ -9,7 +9,7 @@ To build node-gpgpu one has to have opencl installed; after that call `npm i` an
 
 # Examples
 Examples can be found in tests such as test/test_binding.js. Here is one of them:
-```
+```javascript
 const arr1 = new Float32Array(1000);
 const arr2 = new Float32Array(1000);
 const arr3 = new Float32Array(1000);
