@@ -33,4 +33,5 @@ class Gpgpu {
   private _addonInstance: IGpgpuNative;
 }
 
-export = Gpgpu;
+// export = Gpgpu;
+export default Gpgpu;

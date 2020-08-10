@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const Gpgpu = require('../dist/binding.js');
+const Gpgpu = require('../dist/binding.js').default;
 const assert = require('assert');
 
 assert(Gpgpu, 'The expected module is undefined');
@@ -28,7 +28,8 @@ function testKernel() {
 
   const kernel = instance.createKernel(
     function (a, b, c) {
-      const x = this.get_global_id(0.0);
+      const x = this.get_global_id(0);
+
       c[x] = a[x] + b[x];
     },
     [

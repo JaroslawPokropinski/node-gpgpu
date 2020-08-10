@@ -1,7 +1,16 @@
 {
+  "include": [
+    "lib/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "examples"
+  ],
   "compilerOptions": {
     "declaration": true,
-    "lib": [ "esnext" ],
+    "lib": [
+      "esnext"
+    ],
     "module": "commonjs",
     "outDir": "./dist",
     "rootDir": "./lib",

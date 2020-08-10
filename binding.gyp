@@ -15,6 +15,9 @@
             'msvs_settings': {
                 'VCCLCompilerTool': {'ExceptionHandling': 1},
             },
+            'defines': [
+                'NAPI_VERSION=<(napi_build_version)'
+            ],
             'conditions': [
                 ['OS=="linux"', {
                     "libraries": ["-lOpenCL"]

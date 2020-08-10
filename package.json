@@ -1,14 +1,12 @@
 {
-    "main": "lib/binding.js",
-    "dependencies": {
-        "acorn": "^7.4.0",
-        "esprima": "^4.0.1",
-        "node-addon-api": "^3.0.0",
-        "recast": "^0.19.1"
-    },
+    "main": "dist/binding.js",
     "scripts": {
         "pretest": "tsc",
-        "test": "node --napi-modules ./test/test_binding.js"
+        "test": "node --napi-modules ./test/test_binding.js",
+        "install": "prebuild-install --runtime napi || node-gyp rebuild",
+        "rebuild": "node-gyp rebuild",
+        "prebuild": "prebuild --runtime napi --all --strip --verbose",
+        "upload": "prebuild --runtime napi --upload ${GITHUB_TOKEN}"
     },
     "gypfile": true,
     "name": "gpgpu",
@@ -16,6 +14,19 @@
     "author": "JaroslawPokropinski",
     "license": "ISC",
     "description": "Node.js library for gpu acceleration using pure javascript",
+    "binary": {
+        "napi_versions": [
+            3
+        ]
+    },
+    "dependencies": {
+        "acorn": "^7.4.0",
+        "esprima": "^4.0.1",
+        "node-addon-api": "^3.0.0",
+        "prebuild": "^10.0.0",
+        "prebuild-install": "^5.3.5",
+        "recast": "^0.19.1"
+    },
     "devDependencies": {
         "@types/esprima": "^4.0.2",
         "@types/node": "^12.12.6",
