@@ -21,7 +21,12 @@ export function parseExpression(ast: recast.types.ASTNode): string {
       } else if (path.node.object.type === 'ThisExpression') {
         val = parseExpression(path.node.property);
       } else {
-        val = `${parseExpression(path.node.object)}.${parseExpression(path.node.property)}`;
+        console.log(path.node.object.type);
+        if (path.node.object.type === 'MemberExpression') {
+          val = `${parseExpression(path.node.object)}.${parseExpression(path.node.property)}`;
+        } else {
+          val = `${parseExpression(path.node.object)}->${parseExpression(path.node.property)}`;
+        }
       }
       return false;
     },

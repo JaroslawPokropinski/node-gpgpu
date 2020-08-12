@@ -1,36 +1,56 @@
 import { translateFunction, FunctionType } from './parser';
+import ObjectSerializer from './objectSerializer';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const addon = require('../build/Release/gpgpu-native');
 
 interface IGpgpuNative {
-  greet(strName: string): string;
-  createKernel(parserCode: string, types: string[]): (ksize: number[]) => (...args: unknown[]) => void;
+  createKernel(
+    parserCode: string,
+    types: string[],
+    access: string[],
+  ): (ksize: number[]) => (...args: unknown[]) => void;
 }
 
 class Gpgpu {
-  constructor(name: string) {
-    this._addonInstance = new addon.Gpgpu(name);
-  }
-
-  greet(strName: string): string {
-    return this._addonInstance.greet(strName);
+  constructor() {
+    this._addonInstance = new addon.Gpgpu();
+    this._objSerializer = new ObjectSerializer();
   }
 
   createKernel(
     func: (...args: unknown[]) => void,
     types: FunctionType[],
+    shapes: unknown[] = [],
   ): { setSize: (ksize: number[]) => (...args: unknown[]) => void } {
     return {
-      setSize: this._addonInstance.createKernel(
-        translateFunction(func /*, types*/),
-        types.map((t) => t.readWrite),
-      ),
+      setSize: (ksize) => (...args) => {
+        const serializedArgs = args.map((arg, i) => {
+          console.log(i, types[i]);
+          if (types[i].type === 'object') {
+            return Buffer.concat(this._objSerializer.serializeObject(arg)[1]);
+          }
+          if (types[i].type === 'Object[]') {
+            if (Array.isArray(arg)) {
+              return Buffer.concat(arg.flatMap((x) => this._objSerializer.serializeObject(x)[1]));
+            } else {
+              throw new Error('Object[] must be an array');
+            }
+          }
+          return arg;
+        });
+        this._addonInstance.createKernel(
+          translateFunction(func, types, shapes),
+          types.map((t) => t.type),
+          types.map((t) => t.readWrite),
+        )(ksize)(...serializedArgs);
+      },
     };
   }
 
   // private members
   private _addonInstance: IGpgpuNative;
+  private _objSerializer: ObjectSerializer;
 }
 
 // export = Gpgpu;

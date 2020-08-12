@@ -14,13 +14,11 @@ class Gpgpu : public Napi::ObjectWrap<Gpgpu>
 public:
     Gpgpu(const Napi::CallbackInfo &);
     ~Gpgpu();
-    Napi::Value Greet(const Napi::CallbackInfo &);
     Napi::Value CreateKernel(const Napi::CallbackInfo &);
 
     static Napi::Function GetClass(Napi::Env);
 
 private:
-    std::string _greeterName;
     cl_context _context;
     cl_command_queue _command_queue;
     cl_device_id deviceId = NULL;

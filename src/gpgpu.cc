@@ -22,7 +22,7 @@ Gpgpu::Gpgpu(const Napi::CallbackInfo &info) : ObjectWrap(info)
         }
     }
 
-    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_DEFAULT, 1,
+    ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1,
                          &deviceId, &ret_num_devices);
 
     // Create an OpenCL context
@@ -30,8 +30,6 @@ Gpgpu::Gpgpu(const Napi::CallbackInfo &info) : ObjectWrap(info)
 
     // Create a command queue
     this->_command_queue = clCreateCommandQueue(this->_context, deviceId, 0, &ret);
-
-    this->_greeterName = info[0].As<Napi::String>().Utf8Value();
 }
 
 Gpgpu::~Gpgpu()
@@ -41,37 +39,11 @@ Gpgpu::~Gpgpu()
     clReleaseContext(_context);
 }
 
-Napi::Value Gpgpu::Greet(const Napi::CallbackInfo &info)
-{
-    Napi::Env env = info.Env();
-
-    if (info.Length() < 1)
-    {
-        Napi::TypeError::New(env, "Wrong number of arguments")
-            .ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    if (!info[0].IsString())
-    {
-        Napi::TypeError::New(env, "You need to introduce yourself to greet")
-            .ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    Napi::String name = info[0].As<Napi::String>();
-
-    printf("Hello to you %s\n", name.Utf8Value().c_str());
-    printf("I am %s\n", this->_greeterName.c_str());
-
-    return Napi::String::New(env, this->_greeterName);
-}
-
 Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
 {
     Napi::Env env = info.Env();
 
-    if (info.Length() < 2)
+    if (info.Length() < 3)
     {
         Napi::TypeError::New(env, "Wrong number of arguments")
             .ThrowAsJavaScriptException();
@@ -91,11 +63,25 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
             .ThrowAsJavaScriptException();
         return env.Null();
     }
-    Napi::Array arr = info[1].As<Napi::Array>();
-    std::shared_ptr<std::string[]> types(new std::string[arr.Length()]);
-    for (size_t i = 0; i < arr.Length(); i++)
+
+    Napi::Array typesNodeArr = info[1].As<Napi::Array>();
+    std::shared_ptr<std::string[]> types(new std::string[typesNodeArr.Length()]);
+    for (size_t i = 0; i < typesNodeArr.Length(); i++)
     {
-        types[i] = arr.Get(i).As<Napi::String>().Utf8Value();
+        types[i] = typesNodeArr.Get(i).As<Napi::String>().Utf8Value();
+    }
+
+    if (!info[2].IsArray())
+    {
+        Napi::TypeError::New(env, "Failed to pass object access privilages")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    Napi::Array accessNodeArr = info[2].As<Napi::Array>();
+    std::shared_ptr<std::string[]> access(new std::string[accessNodeArr.Length()]);
+    for (size_t i = 0; i < accessNodeArr.Length(); i++)
+    {
+        access[i] = accessNodeArr.Get(i).As<Napi::String>().Utf8Value();
     }
 
     Napi::String func = info[0].As<Napi::String>();
@@ -162,20 +148,45 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                    std::unique_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);
                    for (size_t i = 0; i < info.Length(); i++)
                    {
-                       if (!info[i].IsTypedArray())
+                       if (types[i] == "array")
+                       {
+                           if (!info[i].IsTypedArray())
+                           {
+                               Napi::TypeError::New(env, "Argument type doesnt match array")
+                                   .ThrowAsJavaScriptException();
+                               return env.Null();
+                           }
+                           Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
+                           mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE,
+                                                        tarr.ByteLength(), NULL, &ret);
+                           if (access[i] == "read" || access[i] == "readwrite")
+                           {
+                               ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
+                                                          tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
+                           }
+                       }
+                       else if (types[i] == "object" || types[i] == "Object[]")
+                       {
+                           if (!info[i].IsBuffer())
+                           {
+                               Napi::TypeError::New(env, "Argument type doesnt match object")
+                                   .ThrowAsJavaScriptException();
+                               return env.Null();
+                           }
+                           Napi::Buffer<char> obj = info[i].As<Napi::Buffer<char>>();
+                           mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE,
+                                                        obj.ByteLength(), NULL, &ret);
+                           if (access[i] == "read" || access[i] == "readwrite")
+                           {
+                               ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
+                                                          obj.ByteLength(), obj.Data(), 0, NULL, NULL);
+                           }
+                       }
+                       else
                        {
                            Napi::TypeError::New(env, "Bad argument type")
                                .ThrowAsJavaScriptException();
                            return env.Null();
-                       }
-                       Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
-
-                       mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE,
-                                                    tarr.ByteLength(), NULL, &ret);
-                       if (types[i] == "read" || types[i] == "readwrite")
-                       {
-                           ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
-                                                      tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
                        }
                        ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
                        printf("clSetKernelArg returned %d\n", ret);
@@ -191,7 +202,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                    {
                        // const char *type = arr.Get(0).As<Napi::String>().Utf8Value().c_str();
                        // printf("%s\n", type);
-                       if (types[i] == "write" || types[i] == "readwrite")
+                       if (access[i] == "write" || access[i] == "readwrite")
                        {
                            Napi::ArrayBuffer tarr = info[i].As<TypedArray>().ArrayBuffer();
                            // float *a = (float *)malloc(tarr.ByteLength());
@@ -215,7 +226,6 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
 Napi::Function Gpgpu::GetClass(Napi::Env env)
 {
     return DefineClass(env, "Gpgpu", {
-                                         Gpgpu::InstanceMethod("greet", &Gpgpu::Greet),
                                          Gpgpu::InstanceMethod("createKernel", &Gpgpu::CreateKernel),
                                      });
 }
