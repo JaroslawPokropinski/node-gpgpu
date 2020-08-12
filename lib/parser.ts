@@ -13,8 +13,8 @@ const paramMap = new Map<string, [string, Buffer[]]>();
 
 const argumentHandlers = new Map<string, (name: string) => string>();
 argumentHandlers.set('array', (name) => `__global float *${name}`);
-argumentHandlers.set('object', (name) => `__global ${(paramMap.get(name) ?? [''])[0]} *${name}`);
-argumentHandlers.set('Object[]', (name) => `__global ${(paramMap.get(name) ?? [''])[0]} *${name}`);
+argumentHandlers.set('object', (name) => `__global ${(paramMap.get(name) ?? ['unknown'])[0]} *${name}`);
+argumentHandlers.set('Object[]', (name) => `__global ${(paramMap.get(name) ?? ['unknown'])[0]} *${name}`);
 
 function handleArgType(name: string, type: FunctionType): string {
   return (
@@ -37,7 +37,7 @@ export function translateFunction(
   if (st.type === 'ExpressionStatement' && st.expression.type === 'FunctionExpression') {
     const spTuples = st.expression.params
       .map((p, i) => [p.type === 'Identifier' ? p.name : '', types[i]] as [string, FunctionType])
-      .filter(([_, t]) => t.type === 'object')
+      .filter(([_, t]) => t.type === 'object' || t.type === 'Object[]')
       .map(([p], i) => [p, shapes[i]] as [string, unknown]);
     spTuples.forEach(([p, s]) => {
       const r = objSerializer.serializeObject(s);

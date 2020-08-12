@@ -20,16 +20,17 @@ function testKernel() {
   arr2.forEach((_, i) => (arr2[i] = 1000 - i));
 
   const kernel = instance.createKernel(
-    function (a, b, c) {
-      const x = this.get_global_id(0);
-
-      c[x] = a[x] + b[x];
-    },
     [
       { type: 'array', readWrite: 'read' },
       { type: 'array', readWrite: 'read' },
       { type: 'array', readWrite: 'write' },
     ],
+    [],
+    function (a, b, c) {
+      const x = this.get_global_id(0);
+
+      c[x] = a[x] + b[x];
+    },
   );
   const f1 = kernel.setSize([1000]);
   const f2 = kernel.setSize([1000], [10]);
@@ -53,16 +54,16 @@ function testObjectArgs() {
 
   const fab = instance
     .createKernel(
-      function (a, b) {
-        const x = this.get_global_id(0);
-
-        b[x] = a.x;
-      },
       [
         { type: 'object', readWrite: 'read' },
         { type: 'array', readWrite: 'write' },
       ],
       [obj],
+      function (a, b) {
+        const x = this.get_global_id(0);
+
+        b[x] = a.x;
+      },
     )
     .setSize([1000], [10]);
   fab(obj, arr);
@@ -74,7 +75,7 @@ function testObjectArgsWithArr() {
   console.log(`Running test testObjectArgs`);
 
   const obj = {
-    x: 1337,
+    x: 0,
   };
   const arr = new Float32Array(1000);
 
@@ -82,19 +83,20 @@ function testObjectArgsWithArr() {
 
   const fab = instance
     .createKernel(
-      function (a, b) {
-        const x = this.get_global_id(0);
-
-        b[x] = a.x;
-      },
       [
+        { type: 'object', readWrite: 'read' },
         { type: 'object', readWrite: 'read' },
         { type: 'array', readWrite: 'write' },
       ],
-      [obj],
+      [{ y: true }, obj],
+      function (a1, a2, b) {
+        const x = this.get_global_id(0);
+
+        b[x] = a2.x;
+      },
     )
     .setSize([1000], [10]);
-  fab(obj, arr);
+  fab({ x: 1 }, { x: 1337 }, arr);
   arr.forEach((el) => assert.equal(el, 1337, 'Elements of array should equal 1337'));
 }
 
@@ -110,21 +112,21 @@ function testObjectArr() {
 
   const fab = instance
     .createKernel(
-      function (a, b) {
-        const x = this.get_global_id(0);
-
-        b[x] = a[3].x;
-      },
       [
         { type: 'Object[]', readWrite: 'read' },
         { type: 'array', readWrite: 'write' },
       ],
       [shape],
+      function (a, b) {
+        const x = this.get_global_id(0);
+
+        b[x] = a[3].x;
+      },
     )
     .setSize([1000], [10]);
   assert(Array.isArray(objArr), 'Object[] is not an array');
   fab(objArr, arr);
-  arr.forEach((el) => assert.equal(el, 3, 'Elements of array should equal 4'));
+  arr.forEach((el) => assert.equal(el, 4, 'Elements of array should equal 4'));
 }
 
 console.log('Tests passed- everything looks OK!');

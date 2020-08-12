@@ -19,7 +19,7 @@ export function parseStatement(ast: recast.types.ASTNode): string {
               throw new Error('Declaration must be identifier');
             }
             console.log(d.init);
-            return `auto ${d.id.name} = ${parseExpression(d.init)};`;
+            return `double ${d.id.name} = ${parseExpression(d.init)};`;
           }
         })
         .join('\n');

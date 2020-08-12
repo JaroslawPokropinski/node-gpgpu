@@ -17,7 +17,7 @@ export function parseExpression(ast: recast.types.ASTNode): string {
     },
     visitMemberExpression(path) {
       if (path.node.computed) {
-        val = `${parseExpression(path.node.object)}[${parseExpression(path.node.property)}]`;
+        val = `${parseExpression(path.node.object)}[(size_t)(${parseExpression(path.node.property)})]`;
       } else if (path.node.object.type === 'ThisExpression') {
         val = parseExpression(path.node.property);
       } else {

@@ -12,6 +12,10 @@ interface IGpgpuNative {
   ): (ksize: number[]) => (...args: unknown[]) => void;
 }
 
+interface KernelContext {
+  get_global_id(dim: number): number;
+}
+
 class Gpgpu {
   constructor() {
     this._addonInstance = new addon.Gpgpu();
@@ -19,9 +23,10 @@ class Gpgpu {
   }
 
   createKernel(
-    func: (...args: unknown[]) => void,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     types: FunctionType[],
     shapes: unknown[] = [],
+    func: (this: KernelContext, ...args: any[]) => void,
   ): { setSize: (ksize: number[]) => (...args: unknown[]) => void } {
     return {
       setSize: (ksize) => (...args) => {
