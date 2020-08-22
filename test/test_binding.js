@@ -21,11 +21,10 @@ function testKernel() {
 
   const kernel = instance.createKernel(
     [
-      { type: 'array', readWrite: 'read' },
-      { type: 'array', readWrite: 'read' },
-      { type: 'array', readWrite: 'write' },
+      { type: 'Float32Array', readWrite: 'read' },
+      { type: 'Float32Array', readWrite: 'read' },
+      { type: 'Float32Array', readWrite: 'write' },
     ],
-    [],
     function (a, b, c) {
       const x = this.get_global_id(0);
 
@@ -45,20 +44,15 @@ assert.doesNotThrow(testObjectArgs, undefined, 'testObjectArgs threw');
 function testObjectArgs() {
   console.log(`Running test testObjectArgs`);
 
-  const obj = {
-    x: 1337,
-  };
   const arr = new Float32Array(1000);
-
   arr.fill(0);
 
   const fab = instance
     .createKernel(
       [
-        { type: 'object', readWrite: 'read' },
-        { type: 'array', readWrite: 'write' },
+        { type: 'Object', readWrite: 'read', shapeObj: { x: 0 } },
+        { type: 'Float32Array', readWrite: 'write' },
       ],
-      [obj],
       function (a, b) {
         const x = this.get_global_id(0);
 
@@ -66,7 +60,7 @@ function testObjectArgs() {
       },
     )
     .setSize([1000], [10]);
-  fab(obj, arr);
+  fab({ x: 1337 }, arr);
   arr.forEach((el) => assert.equal(el, 1337, 'Elements of array should equal 1337'));
 }
 
@@ -84,11 +78,10 @@ function testObjectArgsWithArr() {
   const fab = instance
     .createKernel(
       [
-        { type: 'object', readWrite: 'read' },
-        { type: 'object', readWrite: 'read' },
-        { type: 'array', readWrite: 'write' },
+        { type: 'Object', readWrite: 'read', shapeObj: { y: true } },
+        { type: 'Object', readWrite: 'read', shapeObj: obj },
+        { type: 'Float32Array', readWrite: 'write' },
       ],
-      [{ y: true }, obj],
       function (a1, a2, b) {
         const x = this.get_global_id(0);
 
@@ -96,7 +89,7 @@ function testObjectArgsWithArr() {
       },
     )
     .setSize([1000], [10]);
-  fab({ x: 1 }, { x: 1337 }, arr);
+  fab({ y: true }, { x: 1337 }, arr);
   arr.forEach((el) => assert.equal(el, 1337, 'Elements of array should equal 1337'));
 }
 
@@ -104,7 +97,6 @@ assert.doesNotThrow(testObjectArr, undefined, 'testObjectArr threw');
 function testObjectArr() {
   console.log(`Running test testObjectArr`);
 
-  const shape = { x: 0 };
   const objArr = [1, 2, 3, 4, 5].map((v) => ({ x: v }));
   const arr = new Float32Array(1000);
 
@@ -113,10 +105,9 @@ function testObjectArr() {
   const fab = instance
     .createKernel(
       [
-        { type: 'Object[]', readWrite: 'read' },
-        { type: 'array', readWrite: 'write' },
+        { type: 'Object[]', readWrite: 'read', shapeObj: { x: 0 } },
+        { type: 'Float32Array', readWrite: 'write' },
       ],
-      [shape],
       function (a, b) {
         const x = this.get_global_id(0);
 
@@ -125,6 +116,78 @@ function testObjectArr() {
     )
     .setSize([1000], [10]);
   assert(Array.isArray(objArr), 'Object[] is not an array');
+  fab(objArr, arr);
+  arr.forEach((el) => assert.equal(el, 4, 'Elements of array should equal 4'));
+}
+
+assert.doesNotThrow(testSimpleFuncArgs, undefined, 'testSimpleFuncArgs threw');
+function testSimpleFuncArgs() {
+  console.log(`Running test testSimpleFuncArgs`);
+
+  const objArr = [0, 1, 2, 3, 4].map((v) => ({ x: v }));
+  const arr = new Float32Array(1000);
+  arr.fill(0);
+
+  const fab = instance
+    .createKernel(
+      [
+        { type: 'Object[]', readWrite: 'read', shapeObj: { x: 0 } },
+        { type: 'Float32Array', readWrite: 'write' },
+      ],
+      function (a, out) {
+        const x = this.get_global_id(0);
+        out[x] = this.map(a[4].x);
+      },
+      {
+        functions: [
+          {
+            // name: 'map',
+            return: 'float',
+            shape: ['float'],
+            body: function map(x) {
+              return x * 2;
+            },
+          },
+        ],
+      },
+    )
+    .setSize([1000], [10]);
+  fab(objArr, arr);
+  arr.forEach((el) => assert.equal(el, 8, 'Elements of array should equal 4'));
+}
+
+assert.doesNotThrow(testFuncArgs, undefined, 'testFuncArgs threw');
+function testFuncArgs() {
+  console.log(`Running test testFuncArgs`);
+
+  const objArr = [0, 1, 2, 3, 4].map((v) => ({ x: v }));
+  const arr = new Float32Array(1000);
+  arr.fill(0);
+
+  const fab = instance
+    .createKernel(
+      [
+        { type: 'Object[]', readWrite: 'read', shapeObj: { x: 0 } },
+        { type: 'Float32Array', readWrite: 'write' },
+      ],
+      function (a, out) {
+        const x = this.get_global_id(0);
+        out[x] = this.map(a[4]);
+      },
+      {
+        functions: [
+          {
+            // name: 'map',
+            return: 'float',
+            shapeObj: [{ x: 0 }],
+            body: function map(x) {
+              return x.x;
+            },
+          },
+        ],
+      },
+    )
+    .setSize([1000], [10]);
   fab(objArr, arr);
   arr.forEach((el) => assert.equal(el, 4, 'Elements of array should equal 4'));
 }

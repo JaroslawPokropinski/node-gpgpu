@@ -12,10 +12,10 @@ export default class ObjectSerializer {
       name: string | null = null,
     ): [string, Buffer[], string?] => {
       if (typeof o === 'boolean') {
-        const buf = Buffer.allocUnsafe(1);
-        buf.writeUInt8(o ? 1 : 0, 0);
+        const buf = Buffer.allocUnsafe(4);
+        buf.writeUInt32LE(o ? 1 : 0, 0);
         arr.push(buf);
-        return [`bool`, arr];
+        return [`int`, arr];
       } else if (typeof o === 'string') {
         return [`string`, arr];
       } else if (typeof o === 'number') {
@@ -29,20 +29,7 @@ export default class ObjectSerializer {
           return ['null', arr];
         }
         if (Array.isArray(o)) {
-          if (name == null) throw new Error();
-
-          const buf = Buffer.alloc(16);
-          buf.writeUIntLE(o.length, 0, 6);
-          buf.writeUIntLE(0, 8, 6);
-          arr.push(buf);
-
-          const arrSer: Buffer[] = [];
-          const arrDef = `size_t ${name}_length;\n${_serializeObject(o[0], arrSer)[0]}*`;
-          for (let i = 1; i < o.length; i++) {
-            _serializeObject(o[i], arrSer);
-          }
-          toSerialize.push([arrSer, 4, buf]);
-          return [arrDef, arr];
+          throw new Error('Cannot serialize array');
         } else {
           const name = `GenClass${this.ccount}`;
           this.ccount++;

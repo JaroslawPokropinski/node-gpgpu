@@ -12,7 +12,7 @@
     },
     "gypfile": true,
     "name": "gpgpu",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "author": "JaroslawPokropinski",
     "license": "ISC",
     "description": "Node.js library for gpu acceleration using pure javascript",

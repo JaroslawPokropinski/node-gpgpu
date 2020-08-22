@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{DCA2EC12-93A6-F1D6-2C48-CF6B02D238EE}</ProjectGuid>
+    <ProjectGuid>{A9906175-524E-CC94-1263-B9A8EFF3DDBC}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>gpgpu-native</RootNamespace>
     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
@@ -141,7 +141,7 @@
     <ClCompile Include="C:\Users\jarek_junnocu\AppData\Local\nvs\node\12.13.1\x64\node_modules\node-gyp\src\win_delay_load_hook.cc"/>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\node-gpgpu\node_modules\node-addon-api\nothing.vcxproj">
+    <ProjectReference Include="..\node_modules\node-addon-api\nothing.vcxproj">
       <Project>{0CF728E0-202F-70DA-123C-9081805B1EFF}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>

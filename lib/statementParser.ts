@@ -18,27 +18,37 @@ export function parseStatement(ast: recast.types.ASTNode): string {
             if (d.id.type !== 'Identifier') {
               throw new Error('Declaration must be identifier');
             }
-            console.log(d.init);
-            return `double ${d.id.name} = ${parseExpression(d.init)};`;
+            const expr = parseExpression(d.init);
+            return `${expr.type ?? 'double'} ${d.id.name} = ${expr.val};`;
           }
         })
         .join('\n');
       return false;
     },
+    visitIfStatement(path) {
+      val = `if (${parseExpression(path.node.test).val}) ${parseStatement(path.node.consequent)} ${
+        path.node.alternate ? parseStatement(path.node.alternate) : ''
+      }`;
+      return false;
+    },
     visitForStatement(path) {
-      val = `for(${path.node.init ? parseExpression(path.node.init) : ''}; ${
-        path.node.test ? parseExpression(path.node.test) : ''
-      }; ${path.node.update ? parseExpression(path.node.update) : ''}) ${parseStatement(path.node.body)}`;
+      val = `for(${path.node.init ? parseStatement(path.node.init) : ';'} ${
+        path.node.test ? parseExpression(path.node.test).val : ''
+      }; ${path.node.update ? parseExpression(path.node.update).val : ''}) ${parseStatement(path.node.body)}`;
       return false;
     },
     visitExpressionStatement(path) {
       if (path.node.expression.type === 'AssignmentExpression') {
-        val = `${parseExpression(path.node.expression.left)} ${path.node.expression.operator} ${parseExpression(
-          path.node.expression.right,
-        )};`;
+        val = `${parseExpression(path.node.expression.left).val} ${path.node.expression.operator} ${
+          parseExpression(path.node.expression.right).val
+        };`;
       } else {
         throw new Error(`Unsupported expression statement: ${path.node.expression.type}`);
       }
+      return false;
+    },
+    visitReturnStatement(path) {
+      val = `return ${path.node.argument ? parseExpression(path.node.argument).val : ''};`;
       return false;
     },
     visitStatement(path) {

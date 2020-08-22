@@ -148,7 +148,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                    std::unique_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);
                    for (size_t i = 0; i < info.Length(); i++)
                    {
-                       if (types[i] == "array")
+                       if (types[i] == "Float32Array" || types[i] == "Float64Array")
                        {
                            if (!info[i].IsTypedArray())
                            {
@@ -164,8 +164,9 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                                ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
                                                           tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
                            }
+                           ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
                        }
-                       else if (types[i] == "object" || types[i] == "Object[]")
+                       else if (types[i] == "Object[]")
                        {
                            if (!info[i].IsBuffer())
                            {
@@ -181,6 +182,19 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                                ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
                                                           obj.ByteLength(), obj.Data(), 0, NULL, NULL);
                            }
+                           ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
+                       }
+                       else if (types[i] == "Object")
+                       {
+                           if (!info[i].IsBuffer())
+                           {
+                               Napi::TypeError::New(env, "Argument type doesnt match object")
+                                   .ThrowAsJavaScriptException();
+                               return env.Null();
+                           }
+                           Napi::Buffer<char> obj = info[i].As<Napi::Buffer<char>>();
+                           printf("bytes: %d\n", obj.ByteLength());
+                           ret = clSetKernelArg(kernel, i, obj.ByteLength(), obj.Data());
                        }
                        else
                        {
@@ -188,7 +202,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                                .ThrowAsJavaScriptException();
                            return env.Null();
                        }
-                       ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
+
                        printf("clSetKernelArg returned %d\n", ret);
                    }
 

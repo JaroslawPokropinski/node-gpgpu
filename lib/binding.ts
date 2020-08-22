@@ -13,7 +13,10 @@ interface IGpgpuNative {
 }
 
 interface KernelContext {
+  INFINITY: number;
+
   get_global_id(dim: number): number;
+  sqrt(n: number): number;
 }
 
 class Gpgpu {
@@ -23,16 +26,26 @@ class Gpgpu {
   }
 
   createKernel(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     types: FunctionType[],
-    shapes: unknown[] = [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     func: (this: KernelContext, ...args: any[]) => void,
+    opt?: { functions?: { name: string; return: string; shape: string[]; body: (...args: any[]) => void }[] },
   ): { setSize: (ksize: number[]) => (...args: unknown[]) => void } {
+    const kernel = this._addonInstance.createKernel(
+      translateFunction(
+        func,
+        types,
+        types.flatMap((ft) => (ft.shapeObj ? [ft.shapeObj] : [])),
+        opt?.functions ?? [],
+      ),
+      types.map((t) => t.type),
+      types.map((t) => t.readWrite),
+    );
     return {
       setSize: (ksize) => (...args) => {
         const serializedArgs = args.map((arg, i) => {
           console.log(i, types[i]);
-          if (types[i].type === 'object') {
+          if (types[i].type === 'Object') {
             return Buffer.concat(this._objSerializer.serializeObject(arg)[1]);
           }
           if (types[i].type === 'Object[]') {
@@ -44,11 +57,7 @@ class Gpgpu {
           }
           return arg;
         });
-        this._addonInstance.createKernel(
-          translateFunction(func, types, shapes),
-          types.map((t) => t.type),
-          types.map((t) => t.readWrite),
-        )(ksize)(...serializedArgs);
+        kernel(ksize)(...serializedArgs);
       },
     };
   }

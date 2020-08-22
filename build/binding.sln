@@ -10,12 +10,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node-gpgpu)", "..\Programm
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "(node_modules)", "..\Programming\Projects\node-gpgpu\node_modules", "{9D27CFFE-327C-7A9E-8602-2A5CFA76892C}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gpgpu-native", "gpgpu-native.vcxproj", "{DCA2EC12-93A6-F1D6-2C48-CF6B02D238EE}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gpgpu-native", "gpgpu-native.vcxproj", "{A9906175-524E-CC94-1263-B9A8EFF3DDBC}"
 	ProjectSection(ProjectDependencies) = postProject
 		{0CF728E0-202F-70DA-123C-9081805B1EFF} = {0CF728E0-202F-70DA-123C-9081805B1EFF}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nothing", "..\..\..\..\node-gpgpu\node_modules\node-addon-api\nothing.vcxproj", "{0CF728E0-202F-70DA-123C-9081805B1EFF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "nothing", "..\node_modules\node-addon-api\nothing.vcxproj", "{0CF728E0-202F-70DA-123C-9081805B1EFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,10 +27,10 @@ Global
 		{0CF728E0-202F-70DA-123C-9081805B1EFF}.Debug|x64.Build.0 = Debug|x64
 		{0CF728E0-202F-70DA-123C-9081805B1EFF}.Release|x64.ActiveCfg = Release|x64
 		{0CF728E0-202F-70DA-123C-9081805B1EFF}.Release|x64.Build.0 = Release|x64
-		{DCA2EC12-93A6-F1D6-2C48-CF6B02D238EE}.Debug|x64.ActiveCfg = Debug|x64
-		{DCA2EC12-93A6-F1D6-2C48-CF6B02D238EE}.Debug|x64.Build.0 = Debug|x64
-		{DCA2EC12-93A6-F1D6-2C48-CF6B02D238EE}.Release|x64.ActiveCfg = Release|x64
-		{DCA2EC12-93A6-F1D6-2C48-CF6B02D238EE}.Release|x64.Build.0 = Release|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Debug|x64.ActiveCfg = Debug|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Debug|x64.Build.0 = Debug|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Release|x64.ActiveCfg = Release|x64
+		{A9906175-524E-CC94-1263-B9A8EFF3DDBC}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
