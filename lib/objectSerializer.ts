@@ -1,16 +1,19 @@
+import { DeclarationTable } from './declarationTable';
+
 export default class ObjectSerializer {
   classes: string[] = [];
   classesMap = new Map<string, string>();
   ccount = 0;
+  _declarationTable?: DeclarationTable;
+
+  constructor(declarationTable?: DeclarationTable) {
+    this._declarationTable = declarationTable;
+  }
 
   serializeObject(o: unknown): [string, Buffer[]] {
     const toSerialize: [Buffer[], number, Buffer][] = [];
 
-    const _serializeObject = (
-      o: unknown,
-      arr: Buffer[] = [],
-      name: string | null = null,
-    ): [string, Buffer[], string?] => {
+    const _serializeObject = (o: unknown, arr: Buffer[] = []): [string, Buffer[], string?] => {
       if (typeof o === 'boolean') {
         const buf = Buffer.allocUnsafe(4);
         buf.writeUInt32LE(o ? 1 : 0, 0);
@@ -31,18 +34,13 @@ export default class ObjectSerializer {
         if (Array.isArray(o)) {
           throw new Error('Cannot serialize array');
         } else {
-          const name = `GenClass${this.ccount}`;
-          this.ccount++;
-          const obj = `{\n${Object.entries(o)
-            .map(([key, value]) => `${_serializeObject(value, arr, key)[0]} ${key};\n`)
-            .join('')}}`;
-          if (!this.classesMap.has(obj)) {
-            this.classesMap.set(obj, name);
-            this.classes.push(`class ${name} ${obj}`);
-            return [name, arr, name];
-          } else {
-            return [this.classesMap.get(obj) ?? '', arr, name];
+          const obj = Object.entries(o).map<[string, string]>(([key, value]) => [_serializeObject(value, arr)[0], key]);
+
+          if (this._declarationTable != null) {
+            const name = this._declarationTable.getObject(obj);
+            return [name, arr];
           }
+          return ['', arr];
         }
       }
       return ['', arr];
@@ -57,9 +55,9 @@ export default class ObjectSerializer {
   }
 
   getClasses(): string {
-    const classes: string[] = [];
-    this.classesMap.forEach((val, key) => classes.push(`typedef struct ${key} ${val};`));
-
-    return classes.join('\n\n');
+    if (this._declarationTable == null) {
+      throw new Error('Failed to generate classes without declaration table');
+    }
+    return this._declarationTable.getClassesDefinition();
   }
 }

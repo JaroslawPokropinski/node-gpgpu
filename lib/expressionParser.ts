@@ -1,84 +1,169 @@
 import * as recast from 'recast';
+import { DeclarationTable } from './declarationTable';
 
-interface TypeInfo {
-  getText(): string;
-}
+type IntInfo = { name: 'int' };
+type DoubleInfo = { name: 'double' };
+type FunctionInfo = { name: 'function'; returnType: TypeInfo };
+type ObjectInfo = { name: 'object'; global: boolean; objType: string; properties: Record<string, TypeInfo> };
 
-// class StructType implements TypeInfo {
-//   text: string;
-//   constructor(leftInfo: TypeInfo, param: string) {
+export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | ObjectInfo;
 
-//   }
-// }
-
-export function parseExpression(ast: recast.types.ASTNode): { val: string; type: TypeInfo | null } {
-  let val: string | null = null;
-  const type: TypeInfo | null = null;
-  recast.visit(ast, {
-    visitIdentifier(path) {
-      val = path.node.name;
-      return false;
-    },
-    visitLiteral(path) {
-      val = path.node.value?.toString() || 'null';
-      return false;
-    },
-    visitUpdateExpression({ node }) {
-      val = `${node.prefix ? node.operator : ''}${parseExpression(node.argument).val}${
-        !node.prefix ? node.operator : ''
-      }`;
-      return false;
-    },
-    visitUnaryExpression(path) {
-      val = `${path.node.operator}${parseExpression(path.node.argument).val}`;
-      return false;
-    },
-    visitBinaryExpression(path) {
-      val = `${parseExpression(path.node.left).val} ${path.node.operator} ${parseExpression(path.node.right).val}`;
-      return false;
-    },
-    visitMemberExpression(path) {
-      // Many changes to be done here (refactor this later)
-      if (path.node.computed) {
-        val = `${parseExpression(path.node.object).val}[(size_t)(${parseExpression(path.node.property).val})]`;
-      } else if (path.node.object.type === 'ThisExpression') {
-        val = parseExpression(path.node.property).val;
-      } else {
-        console.log(path.node.object.type);
-        if (path.node.object.type === 'MemberExpression') {
-          val = `${parseExpression(path.node.object).val}.${parseExpression(path.node.property).val}`;
-        } else {
-          val = `${parseExpression(path.node.object).val}.${parseExpression(path.node.property).val}`;
-        }
-      }
-      return false;
-    },
-    visitCallExpression(path) {
-      val = `${parseExpression(path.node.callee).val}(${path.node.arguments
-        .map((e) => parseExpression(e).val)
-        .join(', ')})`;
-      return false;
-    },
-    visitThisExpression() {
-      val = '';
-      return false;
-    },
-    visitAssignmentExpression(path) {
-      val = `${parseExpression(path.node.left).val} ${path.node.operator} ${parseExpression(path.node.right).val}`;
-      return false;
-    },
-    visitLogicalExpression({ node }) {
-      val = `${parseExpression(node.left).val} ${node.operator} ${parseExpression(node.right).val}`;
-      return false;
-    },
-    visitExpression(path) {
-      throw new Error(`Unsupported expression: ${path.node.type}`);
-    },
-  });
-
-  if (val == null) {
-    throw new Error(`Failed to parse a expression (got null)`);
+export class ExpressionParser {
+  _declarationTable: DeclarationTable;
+  constructor(declarationTable: DeclarationTable) {
+    this._declarationTable = declarationTable;
   }
 
-  return { val, type };
+  parseExpression(ast: recast.types.ASTNode, ignoreType = false): { val: string; type: TypeInfo } {
+    const parseExpression = (ast: recast.types.ASTNode) => this.parseExpression(ast);
+    const declarationTable = this._declarationTable;
+    let val: string | null = null;
+    let type: TypeInfo | null = null;
+    recast.visit(ast, {
+      visitIdentifier(path) {
+        val = path.node.name;
+        if (!ignoreType) {
+          type = declarationTable.getVarType(path.node.name);
+        }
+        return false;
+      },
+      visitLiteral(path) {
+        val = path.node.value?.toString() || 'null';
+        if (typeof path.node.value === 'number') {
+          type = { name: 'double' };
+        }
+
+        return false;
+      },
+      visitUpdateExpression({ node }) {
+        const argument = parseExpression(node.argument);
+        val = `${node.prefix ? node.operator : ''}${argument.val}${!node.prefix ? node.operator : ''}`;
+        type = argument.type;
+
+        return false;
+      },
+      visitUnaryExpression({ node }) {
+        const argument = parseExpression(node.argument);
+        val = `${node.operator}${argument.val}`;
+        type = argument.type;
+
+        return false;
+      },
+      visitBinaryExpression(path) {
+        const left = parseExpression(path.node.left);
+        val = `${left.val} ${path.node.operator} ${parseExpression(path.node.right).val}`;
+        type = left.type;
+
+        return false;
+      },
+      visitMemberExpression(path) {
+        // Many changes to be done here (refactor this later)
+        if (path.node.computed) {
+          val = `${parseExpression(path.node.object).val}[(size_t)(${parseExpression(path.node.property).val})]`;
+        } else if (path.node.object.type === 'ThisExpression') {
+          // const prop = parseExpression(path.node.property);
+          const that = parseExpression(path.node.object);
+
+          if (path.node.property.type !== 'Identifier' || that.type == null || that.type.name !== 'object') {
+            throw new Error('Bad member expression with this');
+          }
+          val = path.node.property.name;
+          type = that.type.properties[path.node.property.name];
+        } else {
+          if (path.node.property.type !== 'Identifier') throw new Error('Expected Identifier in member expression');
+          const left = parseExpression(path.node.object);
+          let sep = '.';
+
+          if (left.type != null && left.type.name === 'object') {
+            type = left.type.properties[path.node.property.name];
+            sep = left.type.global ? '.' : '->';
+          } else {
+            console.log(path.node.property.type, left.type);
+            // throw new Error('Bad member expression');
+          }
+          val = `${left.val}${sep}${path.node.property.name}`;
+        }
+
+        return false;
+      },
+      visitCallExpression(path) {
+        const callee = parseExpression(path.node.callee);
+
+        val = `${callee.val}(${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
+        if (callee.type == null || callee.type.name !== 'function') {
+          // throw new Error('Called expression must be a function');
+          return false;
+        }
+        type = callee.type.returnType;
+
+        return false;
+      },
+      visitThisExpression() {
+        val = '';
+        type = {
+          name: 'object',
+          global: true,
+          objType: 'void',
+          properties: {
+            INFINITY: { name: 'double' },
+            get_global_id: { name: 'function', returnType: { name: 'int' } },
+            sqrt: { name: 'function', returnType: { name: 'double' } },
+          },
+        };
+        return false;
+      },
+      visitAssignmentExpression(path) {
+        const right = parseExpression(path.node.right);
+        val = `${parseExpression(path.node.left).val} ${path.node.operator} ${right.val}`;
+        type = right.type;
+        return false;
+      },
+      visitLogicalExpression({ node }) {
+        val = `${parseExpression(node.left).val} ${node.operator} ${parseExpression(node.right).val}`;
+        type = { name: 'int' };
+        return false;
+      },
+      visitObjectExpression(path) {
+        const props = path.node.properties.map((prop) => {
+          if (prop.type !== 'Property') throw new Error('Property must be an "Property"');
+          if (prop.key.type !== 'Identifier') throw new Error('Property must have Identifier as a key"');
+
+          return { key: prop.key.name, value: parseExpression(prop.value) };
+        });
+
+        const objName = declarationTable.getObject(
+          props.map((prop) => [
+            prop.value.type.name !== 'object' ? prop.value.type.name : prop.value.type.objType,
+            prop.key,
+          ]),
+        );
+
+        // val = `(${objName}){ ${props.map((p) => `.${p.key.val} = ${p.value.val}`).join(', ')} }`;
+        // val = `malloc(sizeof(${objName}), heap, next)`;
+
+        const properties: Record<string, TypeInfo> = props.reduce(
+          (obj, { key, value }) => ({
+            ...obj,
+            [key]: value.type,
+          }),
+          {},
+        );
+
+        val = `new${objName}(heap, next${props.length > 0 ? ', ' : ''}${props.map((p) => p.value.val).join(', ')})`;
+        type = { name: 'object', global: false, objType: objName, properties };
+        return false;
+      },
+      visitExpression(path) {
+        throw new Error(`Unsupported expression: ${path.node.type}`);
+      },
+    });
+    if (type == null) {
+      type = { name: 'double' };
+    }
+    if (val == null || type == null) {
+      throw new Error(`Failed to parse a expression (got null)`);
+    }
+
+    return { val, type };
+  }
 }

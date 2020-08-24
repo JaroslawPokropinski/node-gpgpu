@@ -1,4 +1,4 @@
-import { translateFunction, FunctionType } from './parser';
+import { translateFunction, FunctionType, SimpleFunctionType, KernelContext } from './parser';
 import ObjectSerializer from './objectSerializer';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -12,13 +12,6 @@ interface IGpgpuNative {
   ): (ksize: number[]) => (...args: unknown[]) => void;
 }
 
-interface KernelContext {
-  INFINITY: number;
-
-  get_global_id(dim: number): number;
-  sqrt(n: number): number;
-}
-
 class Gpgpu {
   constructor() {
     this._addonInstance = new addon.Gpgpu();
@@ -29,7 +22,7 @@ class Gpgpu {
     types: FunctionType[],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     func: (this: KernelContext, ...args: any[]) => void,
-    opt?: { functions?: { name: string; return: string; shape: string[]; body: (...args: any[]) => void }[] },
+    opt?: { functions?: SimpleFunctionType[] },
   ): { setSize: (ksize: number[]) => (...args: unknown[]) => void } {
     const kernel = this._addonInstance.createKernel(
       translateFunction(

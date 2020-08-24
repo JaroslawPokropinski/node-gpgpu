@@ -41,6 +41,7 @@ Gpgpu::~Gpgpu()
 
 Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
 {
+    const size_t FIRST_ARG_INDEX = 2;
     Napi::Env env = info.Env();
 
     if (info.Length() < 3)
@@ -144,6 +145,15 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
         return Napi::Function::New(env, [=](const CallbackInfo &info) {
                    printf("Calling kernel function\n");
                    cl_int ret;
+                   cl_mem stackMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 0x100000, NULL, &ret);
+                   printf("clCreateBuffer returned %d\n", ret);
+                   cl_mem stackSizeMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 8, NULL, &ret);
+                   printf("clCreateBuffer returned %d\n", ret);
+                   ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), &stackMemObj);
+                   printf("clSetKernelArg returned %d\n", ret);
+                   ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), &stackSizeMemObj);
+                   printf("clSetKernelArg returned %d\n", ret);
+
                    // Set the arguments of the kernel
                    std::unique_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);
                    for (size_t i = 0; i < info.Length(); i++)
@@ -164,7 +174,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                                ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
                                                           tarr.ByteLength(), tarr.Data(), 0, NULL, NULL);
                            }
-                           ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
+                           ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX, sizeof(cl_mem), &mem_objs[i]);
                        }
                        else if (types[i] == "Object[]")
                        {
@@ -182,7 +192,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                                ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
                                                           obj.ByteLength(), obj.Data(), 0, NULL, NULL);
                            }
-                           ret = clSetKernelArg(kernel, i, sizeof(cl_mem), &mem_objs[i]);
+                           ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX, sizeof(cl_mem), &mem_objs[i]);
                        }
                        else if (types[i] == "Object")
                        {
@@ -193,8 +203,8 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                                return env.Null();
                            }
                            Napi::Buffer<char> obj = info[i].As<Napi::Buffer<char>>();
-                           printf("bytes: %d\n", obj.ByteLength());
-                           ret = clSetKernelArg(kernel, i, obj.ByteLength(), obj.Data());
+                           printf("bytes: %zd\n", obj.ByteLength());
+                           ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX, obj.ByteLength(), obj.Data());
                        }
                        else
                        {

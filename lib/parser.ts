@@ -1,7 +1,9 @@
 import * as esprima from 'esprima';
 
-import { parseStatement } from './statementParser';
+import { StatementParser } from './statementParser';
 import ObjectSerializer from './objectSerializer';
+import { ExpressionParser } from './expressionParser';
+import { DeclarationTable } from './declarationTable';
 
 export type FunctionType = {
   type: string;
@@ -10,15 +12,22 @@ export type FunctionType = {
   shapeObj?: unknown;
 };
 
-type SimpleFunctionType = {
+export interface KernelContext {
+  INFINITY: number;
+
+  get_global_id(dim: number): number;
+  sqrt(n: number): number;
+}
+
+export type SimpleFunctionType = {
   name?: string;
-  return: string;
+  return?: string;
+  returnObj?: unknown;
   shape?: string[];
   shapeObj?: unknown[];
-  body: (...args: any[]) => void;
+  body: (this: KernelContext, ...args: unknown[]) => void;
 };
 
-const objSerializer = new ObjectSerializer();
 const paramMap = new Map<string, [string, Buffer[]]>();
 
 const argumentHandlers = new Map<string, (name: string) => string>();
@@ -36,6 +45,12 @@ function handleArgType(name: string, type: FunctionType): string {
   )(name);
 }
 
+const malloc = `global void* malloc(size_t size, global uchar *heap, global uint *next)
+{
+  uint index = atomic_add(next, size);
+  return heap+index;
+}`;
+
 export function translateFunction(
   func: (...args: unknown[]) => void,
   types: FunctionType[],
@@ -45,6 +60,12 @@ export function translateFunction(
   const jscode = `(${func.toString()})`;
   const program = esprima.parseScript(jscode);
   const st = program.body[0];
+
+  const declarationTable = new DeclarationTable();
+  const objSerializer = new ObjectSerializer(declarationTable);
+  const expressionParser = new ExpressionParser(declarationTable);
+  const statementParser = new StatementParser(declarationTable, expressionParser);
+  const parseStatement = (ast: Parameters<StatementParser['parseStatement']>[0]) => statementParser.parseStatement(ast);
 
   if (st.type === 'ExpressionStatement' && st.expression.type === 'FunctionExpression') {
     const fucts = functions
@@ -57,10 +78,15 @@ export function translateFunction(
           const shape = f.shape ?? f.shapeObj?.map((obj) => objSerializer.serializeObject(obj)[0]);
           if (shape == null) throw new Error('Shape or shapeObj must be provided');
 
-          return `${f.return} ${name}(${shape
+          const ret = f.return ?? f.returnObj ? objSerializer.serializeObject(f.returnObj)[0] : null;
+          if (ret == null) throw new Error('Return or returnObj must be provided');
+
+          return `${ret} ${name}(${shape
             .map((t, i) => {
               const pi = pf.params[i];
               if (pi.type === 'Identifier') {
+                // TODO: Change that
+                declarationTable.declareVariable(pi.name, { name: 'int' });
                 return `${t} ${pi.name}`;
               }
               throw new Error('Function params must be identifiers');
@@ -71,22 +97,28 @@ export function translateFunction(
       .join('\n');
     const spTuples = st.expression.params
       .map((p, i) => [p.type === 'Identifier' ? p.name : '', types[i]] as [string, FunctionType])
-      .filter(([_, t]) => t.type === 'Object' || t.type === 'Object[]')
+      .filter(([, t]) => t.type === 'Object' || t.type === 'Object[]')
       .map(([p], i) => [p, shapes[i]] as [string, unknown]);
     spTuples.forEach(([p, s]) => {
       const r = objSerializer.serializeObject(s);
       paramMap.set(p, r);
     });
-    const classes = objSerializer.getClasses();
-    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(${st.expression.params
+    const params = st.expression.params
       .map((p, idx) => {
         if (p.type === 'Identifier') {
+          // TODO: Change that
+          declarationTable.declareVariable(p.name, { name: 'int' });
           return handleArgType(p.name, types[idx]);
         } else {
           throw new Error(`Unsupported function argument type: ${p.type}`);
         }
       })
-      .join(', ')}) {\n${st.expression.body.body.map((st) => parseStatement(st)).join('\n')}\n}`;
+      .join(', ');
+    const code = st.expression.body.body.map((st) => parseStatement(st)).join('\n');
+    const classes = objSerializer.getClasses();
+    return `${malloc}\n\n${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${
+      params.length > 0 ? ', ' : ''
+    }${params}) {\n${code}\n}`;
   }
   throw new Error('Bad function construction');
 }

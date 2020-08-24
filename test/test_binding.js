@@ -192,4 +192,23 @@ function testFuncArgs() {
   arr.forEach((el) => assert.equal(el, 4, 'Elements of array should equal 4'));
 }
 
+assert.doesNotThrow(testObjDeclaration, undefined, 'testObjDeclaration threw');
+function testObjDeclaration() {
+  console.log(`Running test testObjDeclaration`);
+
+  const arr = new Float32Array(1000);
+  arr.fill(0);
+
+  const fab = instance
+    .createKernel([{ type: 'Float32Array', readWrite: 'write' }], function (out) {
+      const x = this.get_global_id(0);
+      const obj = { x: x, y: 1000 - x };
+      const y = obj.y;
+      out[x] = obj.x + y;
+    })
+    .setSize([1000], [10]);
+  fab(arr);
+  arr.forEach((el) => assert.equal(el, 1000, 'Elements of array should equal 1000'));
+}
+
 console.log('Tests passed- everything looks OK!');
