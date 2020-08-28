@@ -193,7 +193,7 @@
     "usage": "",
     "user": "",
     "userconfig": "C:\\Users\\jarek_junnocu\\.npmrc",
-    "user_agent": "npm/6.14.7 node/v12.13.1 win32 x64",
+    "user_agent": "npm/6.14.8 node/v12.13.1 win32 x64",
     "version": "",
     "versions": "",
     "viewer": "browser"

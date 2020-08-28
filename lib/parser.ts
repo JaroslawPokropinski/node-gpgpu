@@ -2,7 +2,7 @@ import * as esprima from 'esprima';
 
 import { StatementParser } from './statementParser';
 import ObjectSerializer from './objectSerializer';
-import { ExpressionParser } from './expressionParser';
+import { ExpressionParser, TypeInfo, getTypeInfoText } from './expressionParser';
 import { DeclarationTable } from './declarationTable';
 
 export type FunctionType = {
@@ -25,16 +25,28 @@ export type SimpleFunctionType = {
   returnObj?: unknown;
   shape?: string[];
   shapeObj?: unknown[];
-  body: (this: KernelContext, ...args: unknown[]) => void;
+  body: (this: KernelContext, ...args: never[]) => void;
 };
 
-const paramMap = new Map<string, [string, Buffer[]]>();
+const paramMap = new Map<string, [TypeInfo | null, Buffer[]]>();
 
 const argumentHandlers = new Map<string, (name: string) => string>();
 argumentHandlers.set('Float32Array', (name) => `__global float *${name}`);
 argumentHandlers.set('Float64Array', (name) => `__global double *${name}`);
-argumentHandlers.set('Object', (name) => `${(paramMap.get(name) ?? ['unknown'])[0]} ${name}`);
-argumentHandlers.set('Object[]', (name) => `__global ${(paramMap.get(name) ?? ['unknown'])[0]} *${name}`);
+argumentHandlers.set('Object', (name) => {
+  const param = paramMap.get(name)?.[0];
+  if (param == null) throw new Error('Unknown argument type');
+  if (param.name !== 'object') throw new Error('Object argument must be an object');
+
+  return `global ${param.objType}* ${name}`;
+  // return `${getTypeInfoText(param)} ${name}`;
+});
+argumentHandlers.set('Object[]', (name) => {
+  const param = paramMap.get(name)?.[0];
+  if (param == null) throw new Error('Unknown argument type');
+
+  return `${getTypeInfoText(param)} ${name}`;
+});
 
 function handleArgType(name: string, type: FunctionType): string {
   return (
@@ -75,19 +87,22 @@ export function translateFunction(
           const name = f.name ?? pf.id?.name;
           if (name == null) throw new Error('Declared function must have name or identifier');
 
-          const shape = f.shape ?? f.shapeObj?.map((obj) => objSerializer.serializeObject(obj)[0]);
+          const shape = /*f.shape ??*/ f.shapeObj?.map((obj) => objSerializer.serializeObject(obj, false)[0]);
           if (shape == null) throw new Error('Shape or shapeObj must be provided');
 
-          const ret = f.return ?? f.returnObj ? objSerializer.serializeObject(f.returnObj)[0] : null;
+          const returnObj = f.returnObj != null ? objSerializer.serializeObject(f.returnObj, false)[0] : null;
+          const ret = /*f.return ??*/ returnObj;
           if (ret == null) throw new Error('Return or returnObj must be provided');
 
-          return `${ret} ${name}(${shape
+          return `${getTypeInfoText(ret)} ${name}(${shape
             .map((t, i) => {
               const pi = pf.params[i];
               if (pi.type === 'Identifier') {
                 // TODO: Change that
-                declarationTable.declareVariable(pi.name, { name: 'int' });
-                return `${t} ${pi.name}`;
+                const tp = t ?? { name: 'int' };
+                declarationTable.declareVariable(pi.name, tp);
+                // declarationTable.declareVariable(pi.name, { name: 'object', global: false, objType: objSerializer.serializeObject() });
+                return `${getTypeInfoText(tp)} ${pi.name}`;
               }
               throw new Error('Function params must be identifiers');
             })
@@ -107,7 +122,13 @@ export function translateFunction(
       .map((p, idx) => {
         if (p.type === 'Identifier') {
           // TODO: Change that
-          declarationTable.declareVariable(p.name, { name: 'int' });
+          const param = paramMap.get(p.name)?.[0];
+          const tp: TypeInfo =
+            param ??
+            (types[idx].type === 'Float32Array' || types[idx].type === 'Float64Array'
+              ? { name: 'array', contentType: { name: 'double' } }
+              : null ?? { name: 'int' });
+          declarationTable.declareVariable(p.name, tp);
           return handleArgType(p.name, types[idx]);
         } else {
           throw new Error(`Unsupported function argument type: ${p.type}`);

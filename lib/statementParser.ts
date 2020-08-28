@@ -1,5 +1,5 @@
 import * as recast from 'recast';
-import { ExpressionParser } from './expressionParser';
+import { ExpressionParser, getTypeInfoText } from './expressionParser';
 import { DeclarationTable } from './declarationTable';
 
 export class StatementParser {
@@ -26,6 +26,10 @@ export class StatementParser {
         if (path.node.declarations.filter((d) => d.type !== 'VariableDeclarator' || d.init == null).length > 0) {
           throw new Error(`All declarations must be initialized variable declarations`);
         }
+        // return `${
+        //   expr.type.name !== 'object'
+        //     ? expr.type.name
+        //     : `global ${expr.type.objType}${expr.type.global ? '' : '*'}`
         val = path.node.declarations
           .map((d) => {
             if (d.type === 'VariableDeclarator' && d.init != null) {
@@ -33,12 +37,14 @@ export class StatementParser {
                 throw new Error('Declaration must be identifier');
               }
               const expr = parseExpression(d.init);
+              if (expr.type.name === 'object' && expr.type.global) {
+                const type = { ...expr.type, global: false };
+                declarationTable.declareVariable(d.id.name, type);
+                return `${getTypeInfoText(type)} ${d.id.name} = (&${expr.val});`;
+              }
+
               declarationTable.declareVariable(d.id.name, expr.type);
-              return `${
-                expr.type.name !== 'object'
-                  ? expr.type.name
-                  : `global ${expr.type.objType}${expr.type.global ? '' : '*'}`
-              } ${d.id.name} = ${expr.val};`;
+              return `${getTypeInfoText(expr.type)} ${d.id.name} = ${expr.val};`;
             }
           })
           .join('\n');

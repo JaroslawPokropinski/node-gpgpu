@@ -8,8 +8,8 @@ export class DeclarationTable {
 
   getObject(sig: [string, string][]): string {
     const code = `{${sig
+      .sort((a, b) => a[1].localeCompare(b[1]))
       .map(([type, name]) => `${type} ${name};`)
-      .sort()
       .join('\n')}}`;
     const nameOpt = this._classesMap.get(code);
     if (nameOpt != null) {
@@ -21,8 +21,8 @@ export class DeclarationTable {
     this._initializersMap.set(
       name,
       `global ${name}* new${name}(global uchar *heap, global uint *next${sig.length > 0 ? ', ' : ''}${sig
+        .sort((a, b) => a[1].localeCompare(b[1]))
         .map(([type, name]) => `${type} ${name}`)
-        .sort()
         .join(', ')}){\nglobal ${name}*t = malloc(sizeof(${name}), heap, next);\n${sig
         .map(([, name]) => `t->${name} = ${name};`)
         .join('\n')}\nreturn t;\n}`,

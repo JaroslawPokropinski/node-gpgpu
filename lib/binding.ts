@@ -37,7 +37,6 @@ class Gpgpu {
     return {
       setSize: (ksize) => (...args) => {
         const serializedArgs = args.map((arg, i) => {
-          console.log(i, types[i]);
           if (types[i].type === 'Object') {
             return Buffer.concat(this._objSerializer.serializeObject(arg)[1]);
           }

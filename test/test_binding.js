@@ -105,7 +105,7 @@ function testObjectArr() {
   const fab = instance
     .createKernel(
       [
-        { type: 'Object[]', readWrite: 'read', shapeObj: { x: 0 } },
+        { type: 'Object[]', readWrite: 'read', shapeObj: [{ x: 0 }] },
         { type: 'Float32Array', readWrite: 'write' },
       ],
       function (a, b) {
@@ -131,7 +131,7 @@ function testSimpleFuncArgs() {
   const fab = instance
     .createKernel(
       [
-        { type: 'Object[]', readWrite: 'read', shapeObj: { x: 0 } },
+        { type: 'Object[]', readWrite: 'read', shapeObj: [{ x: 0 }] },
         { type: 'Float32Array', readWrite: 'write' },
       ],
       function (a, out) {
@@ -142,8 +142,8 @@ function testSimpleFuncArgs() {
         functions: [
           {
             // name: 'map',
-            return: 'float',
-            shape: ['float'],
+            returnObj: 1,
+            shapeObj: [1],
             body: function map(x) {
               return x * 2;
             },
@@ -167,7 +167,7 @@ function testFuncArgs() {
   const fab = instance
     .createKernel(
       [
-        { type: 'Object[]', readWrite: 'read', shapeObj: { x: 0 } },
+        { type: 'Object[]', readWrite: 'read', shapeObj: [{ x: 0 }] },
         { type: 'Float32Array', readWrite: 'write' },
       ],
       function (a, out) {
@@ -178,7 +178,7 @@ function testFuncArgs() {
         functions: [
           {
             // name: 'map',
-            return: 'float',
+            returnObj: 0,
             shapeObj: [{ x: 0 }],
             body: function map(x) {
               return x.x;
@@ -209,6 +209,91 @@ function testObjDeclaration() {
     .setSize([1000], [10]);
   fab(arr);
   arr.forEach((el) => assert.equal(el, 1000, 'Elements of array should equal 1000'));
+}
+
+assert.doesNotThrow(testMultipleObjDeclaration, undefined, 'testMultipleObjDeclaration threw');
+function testMultipleObjDeclaration() {
+  console.log(`Running test testMultipleObjDeclaration`);
+
+  const arr = new Float32Array(1000);
+  arr.fill(0);
+
+  const fab = instance
+    .createKernel([{ type: 'Float32Array', readWrite: 'write' }], function (out) {
+      const x = this.get_global_id(0);
+      const obj = { x: x, y: 1000 - x };
+      const obj2 = { x: obj.x * 2, y: obj.y * 2 };
+      const y = obj2.y;
+      out[x] = obj2.x + y;
+    })
+    .setSize([1000], [10]);
+  fab(arr);
+  arr.forEach((el) => assert.equal(el, 2000, 'Elements of array should equal 2000'));
+}
+
+assert.doesNotThrow(testNestedObjDeclaration, undefined, 'testNestedObjDeclaration threw');
+function testNestedObjDeclaration() {
+  console.log(`Running test testNestedObjDeclaration`);
+
+  const arr = new Float32Array(1000);
+  arr.fill(0);
+
+  const fab = instance
+    .createKernel([{ type: 'Float32Array', readWrite: 'write' }], function (out) {
+      const x = this.get_global_id(0);
+      const obj = { a: { x: 0 + x }, b: { y: 1000 - x } };
+      out[x] = obj.a.x + obj.b.y;
+    })
+    .setSize([1000], [10]);
+  fab(arr);
+  arr.forEach((el) => assert.equal(el, 1000, 'Elements of array should equal 1000'));
+}
+
+assert.doesNotThrow(testInferParameterProperties, undefined, 'testInferParameterProperties threw');
+function testInferParameterProperties() {
+  console.log(`Running test testInferParameterProperties`);
+
+  const N = 10;
+  const arr = new Float32Array(N);
+  arr.fill(0);
+
+  const fab = instance
+    .createKernel([{ type: 'Float32Array', readWrite: 'write' }], function (out) {
+      const x = this.get_global_id(0);
+      const obj = { x: x, y: 1000 - x };
+      const obj2 = { x: obj.x * 2, y: { a: obj.y * 2 } };
+      const y = obj2.y;
+      out[x] = obj2.x + y.a;
+    })
+    .setSize([N], [1]);
+  fab(arr);
+  arr.forEach((el) => assert.equal(el, 2000, 'Elements of array should equal 2000'));
+}
+
+assert.doesNotThrow(testInferArgParameterProperties, undefined, 'testInferArgParameterProperties threw');
+function testInferArgParameterProperties() {
+  console.log(`Running test testInferArgParameterProperties`);
+
+  const N = 10;
+  const arr = new Float32Array(N);
+  arr.fill(0);
+
+  const fab = instance
+    .createKernel(
+      [
+        { type: 'Object', readWrite: 'read', shapeObj: { x: { y: 1 } } },
+        { type: 'Float32Array', readWrite: 'write' },
+      ],
+      function (obj, out) {
+        const x = this.get_global_id(0);
+        const b = obj;
+        const a = obj.x;
+        out[x] = a.y;
+      },
+    )
+    .setSize([N], [1]);
+  fab({ x: { y: 22 } }, arr);
+  arr.forEach((el) => assert.equal(el, 22, 'Elements of array should equal 22'));
 }
 
 console.log('Tests passed- everything looks OK!');

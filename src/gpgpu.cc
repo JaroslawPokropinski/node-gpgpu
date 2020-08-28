@@ -145,7 +145,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
         return Napi::Function::New(env, [=](const CallbackInfo &info) {
                    printf("Calling kernel function\n");
                    cl_int ret;
-                   cl_mem stackMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 0x100000, NULL, &ret);
+                   cl_mem stackMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 0x10000000, NULL, &ret);
                    printf("clCreateBuffer returned %d\n", ret);
                    cl_mem stackSizeMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 8, NULL, &ret);
                    printf("clCreateBuffer returned %d\n", ret);
@@ -204,7 +204,18 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                            }
                            Napi::Buffer<char> obj = info[i].As<Napi::Buffer<char>>();
                            printf("bytes: %zd\n", obj.ByteLength());
-                           ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX, obj.ByteLength(), obj.Data());
+                           //    ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX, obj.ByteLength(), obj.Data());
+                           mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE,
+                                                        obj.ByteLength(), NULL, &ret);
+                           printf("clCreateBuffer returned: %d\n", ret);
+                           if (access[i] == "read" || access[i] == "readwrite")
+                           {
+                               ret = clEnqueueWriteBuffer(_command_queue, mem_objs[i], CL_TRUE, 0,
+                                                          obj.ByteLength(), obj.Data(), 0, NULL, NULL);
+                               printf("clEnqueueWriteBuffer returned: %d\n", ret);
+                           }
+                           ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX, sizeof(cl_mem), &mem_objs[i]);
+                           printf("clSetKernelArg returned: %d\n", ret);
                        }
                        else
                        {

@@ -4,9 +4,30 @@ import { DeclarationTable } from './declarationTable';
 type IntInfo = { name: 'int' };
 type DoubleInfo = { name: 'double' };
 type FunctionInfo = { name: 'function'; returnType: TypeInfo };
+type ArrayInfo = { name: 'array'; contentType: TypeInfo };
 type ObjectInfo = { name: 'object'; global: boolean; objType: string; properties: Record<string, TypeInfo> };
 
-export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | ObjectInfo;
+export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | ArrayInfo | ObjectInfo;
+export function getTypeInfoText(ti: TypeInfo): string {
+  console.log(ti);
+  if (ti.name === 'int' || ti.name === 'double') {
+    return ti.name;
+  }
+  if (ti.name === 'object') {
+    if (ti.global) {
+      return `${ti.objType}`;
+      // return `global ${ti.objType}*`;
+    }
+
+    return `global ${ti.objType}*`;
+  }
+
+  if (ti.name === 'array') {
+    return getTypeInfoText(ti.contentType);
+  }
+
+  throw new Error(`Unsupported type inference for ${ti.name}`);
+}
 
 export class ExpressionParser {
   _declarationTable: DeclarationTable;
@@ -24,6 +45,10 @@ export class ExpressionParser {
         val = path.node.name;
         if (!ignoreType) {
           type = declarationTable.getVarType(path.node.name);
+          if (type.name === 'object' && type.global) {
+            type = { ...type, global: false };
+            // val = `(&${val})`;
+          }
         }
         return false;
       },
@@ -59,7 +84,14 @@ export class ExpressionParser {
       visitMemberExpression(path) {
         // Many changes to be done here (refactor this later)
         if (path.node.computed) {
-          val = `${parseExpression(path.node.object).val}[(size_t)(${parseExpression(path.node.property).val})]`;
+          const object = parseExpression(path.node.object);
+          if (object.type.name !== 'array') throw new Error(`Expected array got: ${object.type.name}`);
+          if (object.type.contentType.name === 'object') {
+            val = `(&${object.val}[(size_t)(${parseExpression(path.node.property).val})])`;
+          } else {
+            val = `${object.val}[(size_t)(${parseExpression(path.node.property).val})]`;
+          }
+          type = object.type.contentType;
         } else if (path.node.object.type === 'ThisExpression') {
           // const prop = parseExpression(path.node.property);
           const that = parseExpression(path.node.object);
@@ -133,7 +165,8 @@ export class ExpressionParser {
 
         const objName = declarationTable.getObject(
           props.map((prop) => [
-            prop.value.type.name !== 'object' ? prop.value.type.name : prop.value.type.objType,
+            // prop.value.type.name !== 'object' ? prop.value.type.name : prop.value.type.objType,
+            getTypeInfoText(prop.value.type),
             prop.key,
           ]),
         );
@@ -150,7 +183,7 @@ export class ExpressionParser {
         );
 
         val = `new${objName}(heap, next${props.length > 0 ? ', ' : ''}${props.map((p) => p.value.val).join(', ')})`;
-        type = { name: 'object', global: false, objType: objName, properties };
+        type = { name: 'object', global: false, objType: `${objName}`, properties };
         return false;
       },
       visitExpression(path) {
