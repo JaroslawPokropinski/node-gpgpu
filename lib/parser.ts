@@ -13,6 +13,8 @@ export type FunctionType = {
 };
 
 export interface KernelContext {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  func: Record<string, Function>;
   INFINITY: number;
 
   get_global_id(dim: number): number;
@@ -93,6 +95,9 @@ export function translateFunction(
           const returnObj = f.returnObj != null ? objSerializer.serializeObject(f.returnObj, false)[0] : null;
           const ret = /*f.return ??*/ returnObj;
           if (ret == null) throw new Error('Return or returnObj must be provided');
+
+          // this.func.name <- set type to f type
+          declarationTable.addFunction({ name, returnType: ret });
 
           return `${getTypeInfoText(ret)} ${name}(${shape
             .map((t, i) => {

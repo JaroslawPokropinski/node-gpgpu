@@ -1,10 +1,16 @@
 import { TypeInfo } from './expressionParser';
+import { SimpleFunctionType } from './parser';
 export class DeclarationTable {
   _genClassesCount = 0;
   _classesMap = new Map<string, string>();
   _initializersMap = new Map<string, string>();
+  _functions: { name: string; returnType: TypeInfo }[] = [];
 
   _varMap = new Map<string, TypeInfo>();
+
+  addFunction(f: { name: string; returnType: TypeInfo }): void {
+    this._functions.push(f);
+  }
 
   getObject(sig: [string, string][]): string {
     const code = `{${sig

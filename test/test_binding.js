@@ -286,7 +286,6 @@ function testInferArgParameterProperties() {
       ],
       function (obj, out) {
         const x = this.get_global_id(0);
-        const b = obj;
         const a = obj.x;
         out[x] = a.y;
       },

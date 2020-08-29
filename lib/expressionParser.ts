@@ -1,5 +1,6 @@
 import * as recast from 'recast';
 import { DeclarationTable } from './declarationTable';
+import { SimpleFunctionType } from './parser';
 
 type IntInfo = { name: 'int' };
 type DoubleInfo = { name: 'double' };
@@ -9,7 +10,6 @@ type ObjectInfo = { name: 'object'; global: boolean; objType: string; properties
 
 export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | ArrayInfo | ObjectInfo;
 export function getTypeInfoText(ti: TypeInfo): string {
-  console.log(ti);
   if (ti.name === 'int' || ti.name === 'double') {
     return ti.name;
   }
@@ -101,6 +101,31 @@ export class ExpressionParser {
           }
           val = path.node.property.name;
           type = that.type.properties[path.node.property.name];
+        } else if (
+          path.node.object.type === 'MemberExpression' &&
+          path.node.object.object.type === 'ThisExpression' &&
+          path.node.object.property.type === 'Identifier' &&
+          path.node.object.property.name === 'func'
+        ) {
+          // const that = parseExpression(path.node.object);
+          const property = path.node.property;
+          if (property.type !== 'Identifier') {
+            throw new Error('Bad member expression with this.func');
+          }
+          const ft = declarationTable._functions.reduce<null | typeof declarationTable._functions[0]>((p, c) => {
+            if (c.name === property.name) {
+              return c;
+            }
+            return null;
+          }, null);
+
+          if (ft == null) {
+            throw new Error('Bad member expression with this.func');
+          }
+          val = property.name;
+          type = { name: 'function', returnType: ft.returnType };
+          // val = path.node.object.property.name;
+          // type = that.type.properties[path.node.object.property.name];
         } else {
           if (path.node.property.type !== 'Identifier') throw new Error('Expected Identifier in member expression');
           const left = parseExpression(path.node.object);
@@ -134,7 +159,7 @@ export class ExpressionParser {
         val = '';
         type = {
           name: 'object',
-          global: true,
+          global: false,
           objType: 'void',
           properties: {
             INFINITY: { name: 'double' },
@@ -195,6 +220,12 @@ export class ExpressionParser {
     }
     if (val == null || type == null) {
       throw new Error(`Failed to parse a expression (got null)`);
+    }
+
+    const asType = type as TypeInfo;
+    if (asType.name === 'object' && asType.global) {
+      console.log({ val: `(&${val})`, type: { ...asType, global: false } });
+      return { val: `(&${val})`, type: { ...asType, global: false } };
     }
 
     return { val, type };

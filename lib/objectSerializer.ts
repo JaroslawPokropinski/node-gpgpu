@@ -12,8 +12,6 @@ export default class ObjectSerializer {
   }
 
   serializeObject(o: unknown, kparam = true): [TypeInfo | null, Buffer[]] {
-    const toSerialize: [Buffer[], number, Buffer][] = [];
-
     const _serializeObject = (o: unknown, arr: Buffer[] = []): [TypeInfo | null, Buffer[]] => {
       if (o instanceof Float32Array) throw new Error('Cannot serialize Float32Array');
       if (typeof o === 'boolean') {
@@ -34,36 +32,29 @@ export default class ObjectSerializer {
           return [null, arr];
         }
         if (Array.isArray(o)) {
+          const properties: Record<string, TypeInfo> = {};
           const obj = Object.entries(o[0]).map<[string, string]>(([key, value]) => {
             const typeOfObj = _serializeObject(value, arr)[0];
-            return [typeOfObj != null ? getTypeInfoText(typeOfObj) : '', key];
-          });
-
-          if (this._declarationTable != null) {
-            const name = this._declarationTable.getObject(obj);
-
-            return [
-              { name: 'array', contentType: { name: 'object', global: false, objType: name, properties: {} } },
-              arr,
-            ];
-          }
-          return [null, arr];
-        } else {
-          const properties: Record<string, TypeInfo> = {};
-          console.log(o);
-          const obj = Object.entries(o).map<[string, string]>(([key, value]) => {
-            const typeOfObj = _serializeObject(value, arr)[0];
-            console.log(key);
             properties[key] = typeOfObj ?? { name: 'int' };
             return [typeOfObj != null ? getTypeInfoText(typeOfObj) : '', key];
           });
 
-          // const properties = obj.reduce((prev, curr) => ({ ...prev, [curr[0]]: curr[1] }), {});
-          console.log('Props:', properties);
+          if (this._declarationTable != null) {
+            const name = this._declarationTable.getObject(obj);
+
+            return [{ name: 'array', contentType: { name: 'object', global: false, objType: name, properties } }, arr];
+          }
+          return [null, arr];
+        } else {
+          const properties: Record<string, TypeInfo> = {};
+          const obj = Object.entries(o).map<[string, string]>(([key, value]) => {
+            const typeOfObj = _serializeObject(value, arr)[0];
+            properties[key] = typeOfObj ?? { name: 'int' };
+            return [typeOfObj != null ? getTypeInfoText(typeOfObj) : '', key];
+          });
 
           if (this._declarationTable != null) {
             const name = this._declarationTable.getObject(obj);
-            console.log(name);
 
             return [{ name: 'object', global: kparam, objType: name, properties }, arr];
           }
@@ -72,13 +63,8 @@ export default class ObjectSerializer {
       }
       return [null, arr];
     };
-    const [name, data] = _serializeObject(o);
-    // TODO: change
-    toSerialize.forEach(([]) => {
-      // sum buffer sizes
-      // place positions in buffers
-    });
-    return [name, data];
+
+    return _serializeObject(o);
   }
 
   getClasses(): string {
