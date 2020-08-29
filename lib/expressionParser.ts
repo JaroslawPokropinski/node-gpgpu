@@ -4,7 +4,7 @@ import { SimpleFunctionType } from './parser';
 
 type IntInfo = { name: 'int' };
 type DoubleInfo = { name: 'double' };
-type FunctionInfo = { name: 'function'; returnType: TypeInfo };
+type FunctionInfo = { name: 'function'; returnType: TypeInfo; useHeap: boolean };
 type ArrayInfo = { name: 'array'; contentType: TypeInfo };
 type ObjectInfo = { name: 'object'; global: boolean; objType: string; properties: Record<string, TypeInfo> };
 
@@ -116,14 +116,14 @@ export class ExpressionParser {
             if (c.name === property.name) {
               return c;
             }
-            return null;
+            return p;
           }, null);
 
           if (ft == null) {
-            throw new Error('Bad member expression with this.func');
+            throw new Error(`Bad member expression with this.func, "${property.name}" is not defined`);
           }
           val = property.name;
-          type = { name: 'function', returnType: ft.returnType };
+          type = { name: 'function', returnType: ft.returnType, useHeap: true };
           // val = path.node.object.property.name;
           // type = that.type.properties[path.node.object.property.name];
         } else {
@@ -145,13 +145,15 @@ export class ExpressionParser {
       },
       visitCallExpression(path) {
         const callee = parseExpression(path.node.callee);
-
-        val = `${callee.val}(${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
         if (callee.type == null || callee.type.name !== 'function') {
           // throw new Error('Called expression must be a function');
           return false;
         }
+
+        const heapParams = callee.type.useHeap ? `heap, next${path.node.arguments.length > 0 ? ', ' : ''}` : '';
+
         type = callee.type.returnType;
+        val = `${callee.val}(${heapParams}${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
 
         return false;
       },
@@ -163,8 +165,8 @@ export class ExpressionParser {
           objType: 'void',
           properties: {
             INFINITY: { name: 'double' },
-            get_global_id: { name: 'function', returnType: { name: 'int' } },
-            sqrt: { name: 'function', returnType: { name: 'double' } },
+            get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
+            sqrt: { name: 'function', returnType: { name: 'double' }, useHeap: false },
           },
         };
         return false;

@@ -99,7 +99,9 @@ export function translateFunction(
           // this.func.name <- set type to f type
           declarationTable.addFunction({ name, returnType: ret });
 
-          return `${getTypeInfoText(ret)} ${name}(${shape
+          return `${getTypeInfoText(ret)} ${name}(global uchar *heap, global uint *next${
+            pf.params.length > 0 ? ', ' : ''
+          }${shape
             .map((t, i) => {
               const pi = pf.params[i];
               if (pi.type === 'Identifier') {
