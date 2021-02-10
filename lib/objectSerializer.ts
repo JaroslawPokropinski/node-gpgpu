@@ -48,6 +48,9 @@ export default class ObjectSerializer {
         } else {
           const properties: Record<string, TypeInfo> = {};
           const obj = Object.entries(o).map<[string, string]>(([key, value]) => {
+            // const t = this.serializeObject(value, false);
+            // const typeOfObj = t[0];
+            // arr.push(...t[1]);
             const typeOfObj = _serializeObject(value, arr)[0];
             properties[key] = typeOfObj ?? { name: 'int' };
             return [typeOfObj != null ? getTypeInfoText(typeOfObj) : '', key];

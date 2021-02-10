@@ -43,7 +43,7 @@ export class DeclarationTable {
   getClassesDefinition(): string {
     const classes: string[] = [];
     this._classesMap.forEach((val, key) => classes.push(`typedef struct ${key} ${val};`));
-    this._initializersMap.forEach((val) => classes.push(val));
+    // this._initializersMap.forEach((val) => classes.push(val));
 
     return classes.join('\n\n');
   }

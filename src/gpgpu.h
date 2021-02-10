@@ -15,6 +15,8 @@ public:
     Gpgpu(const Napi::CallbackInfo &);
     ~Gpgpu();
     Napi::Value CreateKernel(const Napi::CallbackInfo &);
+    void handleError(const char *, int);
+    void log(const char *, ...);
 
     static Napi::Function GetClass(Napi::Env);
 

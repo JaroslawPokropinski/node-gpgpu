@@ -18,6 +18,7 @@ export interface KernelContext {
   INFINITY: number;
 
   get_global_id(dim: number): number;
+  int(x: number): number;
   sqrt(n: number): number;
 }
 
@@ -144,7 +145,7 @@ export function translateFunction(
       .join(', ');
     const code = st.expression.body.body.map((st) => parseStatement(st)).join('\n');
     const classes = objSerializer.getClasses();
-    return `${malloc}\n\n${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${
+    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${
       params.length > 0 ? ', ' : ''
     }${params}) {\n${code}\n}`;
   }

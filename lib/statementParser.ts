@@ -40,7 +40,7 @@ export class StatementParser {
               if (expr.type.name === 'object' && expr.type.global) {
                 const type = { ...expr.type, global: false };
                 declarationTable.declareVariable(d.id.name, type);
-                return `${getTypeInfoText(type)} ${d.id.name} = (&${expr.val});`;
+                return `${getTypeInfoText(type)} ${d.id.name} = ${expr.val};`;
               }
 
               declarationTable.declareVariable(d.id.name, expr.type);

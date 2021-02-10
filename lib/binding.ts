@@ -9,7 +9,7 @@ interface IGpgpuNative {
     parserCode: string,
     types: string[],
     access: string[],
-  ): (ksize: number[]) => (...args: unknown[]) => void;
+  ): (ksize: number[]) => (...args: unknown[]) => Promise<void>;
 }
 
 class Gpgpu {
@@ -23,7 +23,7 @@ class Gpgpu {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     func: (this: KernelContext, ...args: any[]) => void,
     opt?: { functions?: SimpleFunctionType[] },
-  ): { setSize: (ksize: number[]) => (...args: unknown[]) => void } {
+  ): { setSize: (ksize: number[]) => (...args: unknown[]) => Promise<void> } {
     const kernel = this._addonInstance.createKernel(
       translateFunction(
         func,
@@ -49,7 +49,7 @@ class Gpgpu {
           }
           return arg;
         });
-        kernel(ksize)(...serializedArgs);
+        return kernel(ksize)(...serializedArgs);
       },
     };
   }

@@ -3,7 +3,7 @@
     "types": "./dist/binding.d.ts",
     "scripts": {
         "pretest": "tsc",
-        "test": "node --napi-modules ./test/test_binding.js",
+        "test": "mocha --reporter list",
         "build": "tsc",
         "watch": "tsc -w",
         "install": "prebuild-install --runtime napi || node-gyp rebuild",
@@ -35,9 +35,11 @@
         "@types/node": "^12.12.6",
         "@typescript-eslint/eslint-plugin": "^3.8.0",
         "@typescript-eslint/parser": "^3.8.0",
+        "chai": "^4.2.0",
         "eslint": "^7.6.0",
         "eslint-config-prettier": "^6.11.0",
         "eslint-plugin-prettier": "^3.1.4",
+        "mocha": "^8.2.1",
         "prettier": "^2.0.5",
         "typescript": "^4.0.0"
     }

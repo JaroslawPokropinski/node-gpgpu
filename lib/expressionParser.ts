@@ -19,11 +19,11 @@ export function getTypeInfoText(ti: TypeInfo): string {
       // return `global ${ti.objType}*`;
     }
 
-    return `global ${ti.objType}*`;
+    return `${ti.objType}`;
   }
 
   if (ti.name === 'array') {
-    return getTypeInfoText(ti.contentType);
+    return `global ${getTypeInfoText(ti.contentType)}*`;
   }
 
   throw new Error(`Unsupported type inference for ${ti.name}`);
@@ -47,7 +47,7 @@ export class ExpressionParser {
           type = declarationTable.getVarType(path.node.name);
           if (type.name === 'object' && type.global) {
             type = { ...type, global: false };
-            // val = `(&${val})`;
+            val = `(*${val})`;
           }
         }
         return false;
@@ -76,7 +76,7 @@ export class ExpressionParser {
       },
       visitBinaryExpression(path) {
         const left = parseExpression(path.node.left);
-        val = `${left.val} ${path.node.operator} ${parseExpression(path.node.right).val}`;
+        val = `(${left.val} ${path.node.operator} ${parseExpression(path.node.right).val})`;
         type = left.type;
 
         return false;
@@ -87,20 +87,35 @@ export class ExpressionParser {
           const object = parseExpression(path.node.object);
           if (object.type.name !== 'array') throw new Error(`Expected array got: ${object.type.name}`);
           if (object.type.contentType.name === 'object') {
-            val = `(&${object.val}[(size_t)(${parseExpression(path.node.property).val})])`;
+            val = `${object.val}[(size_t)(${parseExpression(path.node.property).val})]`;
           } else {
             val = `${object.val}[(size_t)(${parseExpression(path.node.property).val})]`;
           }
           type = object.type.contentType;
         } else if (path.node.object.type === 'ThisExpression') {
           // const prop = parseExpression(path.node.property);
-          const that = parseExpression(path.node.object);
+          // const that = parseExpression(path.node.object);
+          const thisType: TypeInfo = {
+            name: 'object',
+            global: false,
+            objType: 'void',
+            properties: {
+              INFINITY: { name: 'double' },
+              get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
+              sqrt: { name: 'function', returnType: { name: 'double' }, useHeap: false },
+              int: { name: 'function', returnType: { name: 'int' }, useHeap: false },
+            },
+          };
 
-          if (path.node.property.type !== 'Identifier' || that.type == null || that.type.name !== 'object') {
+          if (path.node.property.type !== 'Identifier') {
             throw new Error('Bad member expression with this');
           }
+          type = thisType.properties[path.node.property.name];
+          if (path.node.property.name === 'int') {
+            val = `(int)`;
+            return false;
+          }
           val = path.node.property.name;
-          type = that.type.properties[path.node.property.name];
         } else if (
           path.node.object.type === 'MemberExpression' &&
           path.node.object.object.type === 'ThisExpression' &&
@@ -133,7 +148,7 @@ export class ExpressionParser {
 
           if (left.type != null && left.type.name === 'object') {
             type = left.type.properties[path.node.property.name];
-            sep = left.type.global ? '.' : '->';
+            sep = left.type.global ? '->' : '.';
           } else {
             console.log(path.node.property.type, left.type);
             // throw new Error('Bad member expression');
@@ -145,31 +160,22 @@ export class ExpressionParser {
       },
       visitCallExpression(path) {
         const callee = parseExpression(path.node.callee);
+        const heapParams = `heap, next${path.node.arguments.length > 0 ? ', ' : ''}`;
         if (callee.type == null || callee.type.name !== 'function') {
           // throw new Error('Called expression must be a function');
+          val = `${callee.val}(${heapParams}${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
           return false;
         }
 
-        const heapParams = callee.type.useHeap ? `heap, next${path.node.arguments.length > 0 ? ', ' : ''}` : '';
-
         type = callee.type.returnType;
-        val = `${callee.val}(${heapParams}${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
+        val = `${callee.val}(${callee.type.useHeap ? heapParams : ''}${path.node.arguments
+          .map((e) => parseExpression(e).val)
+          .join(', ')})`;
 
         return false;
       },
       visitThisExpression() {
-        val = '';
-        type = {
-          name: 'object',
-          global: false,
-          objType: 'void',
-          properties: {
-            INFINITY: { name: 'double' },
-            get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
-            sqrt: { name: 'function', returnType: { name: 'double' }, useHeap: false },
-          },
-        };
-        return false;
+        throw new Error('This exception should be only in member expression');
       },
       visitAssignmentExpression(path) {
         const right = parseExpression(path.node.right);
@@ -190,16 +196,7 @@ export class ExpressionParser {
           return { key: prop.key.name, value: parseExpression(prop.value) };
         });
 
-        const objName = declarationTable.getObject(
-          props.map((prop) => [
-            // prop.value.type.name !== 'object' ? prop.value.type.name : prop.value.type.objType,
-            getTypeInfoText(prop.value.type),
-            prop.key,
-          ]),
-        );
-
-        // val = `(${objName}){ ${props.map((p) => `.${p.key.val} = ${p.value.val}`).join(', ')} }`;
-        // val = `malloc(sizeof(${objName}), heap, next)`;
+        const objName = declarationTable.getObject(props.map((prop) => [getTypeInfoText(prop.value.type), prop.key]));
 
         const properties: Record<string, TypeInfo> = props.reduce(
           (obj, { key, value }) => ({
@@ -208,8 +205,8 @@ export class ExpressionParser {
           }),
           {},
         );
-
-        val = `new${objName}(heap, next${props.length > 0 ? ', ' : ''}${props.map((p) => p.value.val).join(', ')})`;
+        val = `(${objName}){ ${props.map((p) => `.${p.key} = ${p.value.val}`).join(', ')} }`;
+        // val = `new${objName}(heap, next${props.length > 0 ? ', ' : ''}${props.map((p) => p.value.val).join(', ')})`;
         type = { name: 'object', global: false, objType: `${objName}`, properties };
         return false;
       },
@@ -226,8 +223,8 @@ export class ExpressionParser {
 
     const asType = type as TypeInfo;
     if (asType.name === 'object' && asType.global) {
-      console.log({ val: `(&${val})`, type: { ...asType, global: false } });
-      return { val: `(&${val})`, type: { ...asType, global: false } };
+      console.log({ val: `(${val})`, type: { ...asType, global: false } });
+      return { val: `(${val})`, type: { ...asType, global: false } };
     }
 
     return { val, type };
