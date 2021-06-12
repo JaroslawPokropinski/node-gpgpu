@@ -6,7 +6,7 @@
         "test": "mocha --reporter list",
         "build": "tsc",
         "watch": "tsc -w",
-        "install": "prebuild-install --runtime napi || node-gyp rebuild",
+        "install": "cmake-js compile",
         "rebuild": "node-gyp rebuild",
         "prebuild": "prebuild --runtime napi --all --strip --verbose",
         "upload": "prebuild --runtime napi --upload ${GITHUB_TOKEN}"
@@ -17,11 +17,6 @@
     "author": "JaroslawPokropinski",
     "license": "ISC",
     "description": "Node.js library for gpu acceleration using pure javascript",
-    "binary": {
-        "napi_versions": [
-            3
-        ]
-    },
     "dependencies": {
         "acorn": "^7.4.0",
         "esprima": "^4.0.1",
@@ -36,6 +31,7 @@
         "@typescript-eslint/eslint-plugin": "^3.8.0",
         "@typescript-eslint/parser": "^3.8.0",
         "chai": "^4.2.0",
+        "cmake-js": "^6.1.0",
         "eslint": "^7.6.0",
         "eslint-config-prettier": "^6.11.0",
         "eslint-plugin-prettier": "^3.1.4",

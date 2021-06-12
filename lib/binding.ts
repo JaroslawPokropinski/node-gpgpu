@@ -2,7 +2,7 @@ import { translateFunction, FunctionType, SimpleFunctionType, KernelContext } fr
 import ObjectSerializer from './objectSerializer';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const addon = require('../build/Release/gpgpu-native');
+const addon = require('../build/Release/gpgpu.node');
 
 interface IGpgpuNative {
   createKernel(

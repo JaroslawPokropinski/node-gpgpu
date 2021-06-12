@@ -6,7 +6,7 @@ describe('Basic test', () => {
 
   it('is defined', () => {
     expect(Gpgpu).to.be.not.undefined;
-  })
+  });
 
   it('can run basic kernel', async () => {
     const arr1 = new Float32Array(1000);
@@ -33,7 +33,7 @@ describe('Basic test', () => {
     await f1(arr1, arr2, arr3);
 
     expect(arr3).to.eql(new Float32Array(1000).fill(1000));
-  })
+  });
 
   it('can have object args', async () => {
     const arr = new Float32Array(1000);
@@ -54,7 +54,7 @@ describe('Basic test', () => {
       .setSize([1000], [10]);
     await fab({ x: 1337 }, arr);
     expect(arr).to.eql(new Float32Array(1000).fill(1337));
-  })
+  });
 
   it('can have array args', async () => {
     const obj = {
@@ -81,7 +81,7 @@ describe('Basic test', () => {
     await fab({ y: true }, { x: 1337 }, arr);
 
     expect(arr).to.eql(new Float32Array(1000).fill(1337));
-  })
+  });
 
   it('can have object array args', async () => {
     const objArr = [1, 2, 3, 4, 5].map((v) => ({ x: v }));
@@ -140,5 +140,5 @@ describe('Basic test', () => {
       .setSize([1000], [10]);
     await fab(objArr, arr);
     expect(arr).to.eql(new Float32Array(1000).fill(8));
-  })
-})
+  });
+});
