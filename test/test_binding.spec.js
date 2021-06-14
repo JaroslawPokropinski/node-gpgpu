@@ -1,5 +1,6 @@
 const { expect } = require('chai');
-const Gpgpu = require('../dist/binding.js').default;
+const Gpgpu = require('../dist/binding.js').Gpgpu;
+
 
 describe('Basic test', () => {
   const instance = new Gpgpu();
@@ -141,28 +142,4 @@ describe('Basic test', () => {
     await fab(objArr, arr);
     expect(arr).to.eql(new Float32Array(1000).fill(8));
   });
-
-  it('works with classes', async () => {
-    class MyKernel {
-      constructor() {
-        this.helper.returnObj = 1;
-        this.helper.shapeObj = [1];
-        this.main.typing = [{ type: 'Float32Array', readWrite: 'readwrite' }]
-      }
-      helper(x) { return x * 2; }
-      main(out) {
-        const x = this.get_global_id(0);
-        out[x] = this.helper(out[x]);
-      }
-    }
-    const arr = new Float32Array(1000);
-    arr.fill(1);
-
-    const fab = instance
-      .createKernel2(MyKernel).setSize([1000], [10]);
-
-    await fab(arr);
-    expect(arr).to.eql(new Float32Array(1000).fill(2));
-  })
-
 });

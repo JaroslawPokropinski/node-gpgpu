@@ -12,14 +12,13 @@ export type FunctionType = {
   shapeObj?: unknown;
 };
 
-export interface KernelContext {
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  func: Record<string, Function>;
-  INFINITY: number;
+export class KernelContext {
+  func: Record<string, Function> = null as unknown as Record<string, Function>;
+  INFINITY: number = null as unknown as number;
 
-  get_global_id(dim: number): number;
-  int(x: number): number;
-  sqrt(n: number): number;
+  get_global_id(dim: number): number { throw new Error('Function get_global_id is not callable outside of kernel'); }
+  int(x: number): number { throw new Error('Function int is not callable outside of kernel'); };
+  sqrt(n: number): number { throw new Error('Function sqrt is not callable outside of kernel'); };
 }
 
 export type SimpleFunctionType = {

@@ -12,7 +12,20 @@ interface IGpgpuNative {
   ): (ksize: number[]) => (...args: unknown[]) => Promise<void>;
 }
 
-class Gpgpu {
+export function kernelFunction(returnObj: unknown, shapeObj: unknown) {
+  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
+    descriptor.value.shapeObj = shapeObj;
+    descriptor.value.returnObj = returnObj;
+  };
+}
+
+export function kernelEntry(typing: FunctionType[]) {
+  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
+    descriptor.value.typing = typing;
+  };
+}
+
+export class Gpgpu {
   constructor() {
     this._addonInstance = new addon.Gpgpu();
     this._objSerializer = new ObjectSerializer();
@@ -101,5 +114,6 @@ class Gpgpu {
   private _objSerializer: ObjectSerializer;
 }
 
+export { KernelContext }
 // export = Gpgpu;
-export default Gpgpu;
+// export default Gpgpu;
