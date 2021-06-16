@@ -1,14 +1,19 @@
 # What is node-gpgpu
+
 node-gpgpu is Node.js library for gpu accelerated programming. It allows to write accelerated code using subset of javascript and use it as standard javascript functions.
 
 # Installation
+
 For now to install this package you have to clone repository and build it from scratch. Since it uses Napi in future installation will be as easy as calling `npm install ...`.
 
 # Build
+
 To build node-gpgpu one has to have opencl installed; after that call `npm i` and `npm run test` to verify build.
 
 # Examples
+
 Examples can be found in tests such as test/test_binding.js. Here is one of them:
+
 ```javascript
 const arr1 = new Float32Array(1000);
 const arr2 = new Float32Array(1000);

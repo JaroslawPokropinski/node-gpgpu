@@ -69,16 +69,20 @@ export class Gpgpu {
 
   createKernel2(program: any): { setSize: (ksize: number[]) => (...args: unknown[]) => Promise<void> } {
     new program(); // This initialises program.prototype.main.typing etc.
-    const func = program.prototype.main
+    const func = program.prototype.main;
     const types = program.prototype.main.typing;
-    const functions = Object.getOwnPropertyNames(program.prototype).filter(item => typeof program.prototype[item] === 'function').filter(k => k !== 'constructor' && k !== 'main').map((f) => program.prototype[f]).map((f) => ({
-      name: f.name,
-      return: f.return,
-      returnObj: f.returnObj,
-      shape: f.shape,
-      shapeObj: f.shapeObj,
-      body: f,
-    }))
+    const functions = Object.getOwnPropertyNames(program.prototype)
+      .filter((item) => typeof program.prototype[item] === 'function')
+      .filter((k) => k !== 'constructor' && k !== 'main')
+      .map((f) => program.prototype[f])
+      .map((f) => ({
+        name: f.name,
+        return: f.return,
+        returnObj: f.returnObj,
+        shape: f.shape,
+        shapeObj: f.shapeObj,
+        body: f,
+      }));
     const kernel = this._addonInstance.createKernel(
       translateFunction(
         func,
@@ -114,6 +118,6 @@ export class Gpgpu {
   private _objSerializer: ObjectSerializer;
 }
 
-export { KernelContext }
+export { KernelContext };
 // export = Gpgpu;
 // export default Gpgpu;

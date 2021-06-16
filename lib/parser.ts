@@ -13,12 +13,18 @@ export type FunctionType = {
 };
 
 export class KernelContext {
-  func: Record<string, Function> = null as unknown as Record<string, Function>;
-  INFINITY: number = null as unknown as number;
+  func: Record<string, Function> = (null as unknown) as Record<string, Function>;
+  INFINITY: number = (null as unknown) as number;
 
-  get_global_id(dim: number): number { throw new Error('Function get_global_id is not callable outside of kernel'); }
-  int(x: number): number { throw new Error('Function int is not callable outside of kernel'); };
-  sqrt(n: number): number { throw new Error('Function sqrt is not callable outside of kernel'); };
+  get_global_id(dim: number): number {
+    throw new Error('Function get_global_id is not callable outside of kernel');
+  }
+  int(x: number): number {
+    throw new Error('Function int is not callable outside of kernel');
+  }
+  sqrt(n: number): number {
+    throw new Error('Function sqrt is not callable outside of kernel');
+  }
 }
 
 export type SimpleFunctionType = {
@@ -109,20 +115,21 @@ export function translateFunction(
           // this.func.name <- set type to f type
           declarationTable.addFunction({ name, returnType: ret });
 
-          return `${getTypeInfoText(ret)} ${name}(global uchar *heap, global uint *next${pf.params.length > 0 ? ', ' : ''
-            }${shape
-              .map((t, i) => {
-                const pi = pf.params[i];
-                if (pi.type === 'Identifier') {
-                  // TODO: Change that
-                  const tp = t ?? { name: 'int' };
-                  declarationTable.declareVariable(pi.name, tp);
-                  // declarationTable.declareVariable(pi.name, { name: 'object', global: false, objType: objSerializer.serializeObject() });
-                  return `${getTypeInfoText(tp)} ${pi.name}`;
-                }
-                throw new Error('Function params must be identifiers');
-              })
-              .join(', ')}) {\n${parseStatement(pf.body)}\n}`;
+          return `${getTypeInfoText(ret)} ${name}(global uchar *heap, global uint *next${
+            pf.params.length > 0 ? ', ' : ''
+          }${shape
+            .map((t, i) => {
+              const pi = pf.params[i];
+              if (pi.type === 'Identifier') {
+                // TODO: Change that
+                const tp = t ?? { name: 'int' };
+                declarationTable.declareVariable(pi.name, tp);
+                // declarationTable.declareVariable(pi.name, { name: 'object', global: false, objType: objSerializer.serializeObject() });
+                return `${getTypeInfoText(tp)} ${pi.name}`;
+              }
+              throw new Error('Function params must be identifiers');
+            })
+            .join(', ')}) {\n${parseStatement(pf.body)}\n}`;
         }
       })
       .join('\n');
@@ -153,8 +160,9 @@ export function translateFunction(
       .join(', ');
     const code = st.expression.body.body.map((st) => parseStatement(st)).join('\n');
     const classes = objSerializer.getClasses();
-    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${params.length > 0 ? ', ' : ''
-      }${params}) {\n${code}\n}`;
+    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${
+      params.length > 0 ? ', ' : ''
+    }${params}) {\n${code}\n}`;
   }
   throw new Error('Bad function construction');
 }
