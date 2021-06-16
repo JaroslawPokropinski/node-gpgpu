@@ -1,5 +1,6 @@
 const { expect } = require('chai');
-const Gpgpu = require('../dist/binding.js').default;
+const Gpgpu = require('../dist/binding.js').Gpgpu;
+
 
 describe('Basic test', () => {
   const instance = new Gpgpu();

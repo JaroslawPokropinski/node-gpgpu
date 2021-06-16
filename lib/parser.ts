@@ -12,14 +12,13 @@ export type FunctionType = {
   shapeObj?: unknown;
 };
 
-export interface KernelContext {
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  func: Record<string, Function>;
-  INFINITY: number;
+export class KernelContext {
+  func: Record<string, Function> = null as unknown as Record<string, Function>;
+  INFINITY: number = null as unknown as number;
 
-  get_global_id(dim: number): number;
-  int(x: number): number;
-  sqrt(n: number): number;
+  get_global_id(dim: number): number { throw new Error('Function get_global_id is not callable outside of kernel'); }
+  int(x: number): number { throw new Error('Function int is not callable outside of kernel'); };
+  sqrt(n: number): number { throw new Error('Function sqrt is not callable outside of kernel'); };
 }
 
 export type SimpleFunctionType = {
@@ -66,13 +65,22 @@ const malloc = `global void* malloc(size_t size, global uchar *heap, global uint
   return heap+index;
 }`;
 
+function prefixFunction(c: string): string {
+  if (c.startsWith('function ')) return c;
+  if (c.startsWith('(function ')) return c;
+  if (c.startsWith('function(')) return c;
+  if (c.startsWith('(function(')) return c;
+  if (c.startsWith('(')) return `(function ${c.slice(1, c.length)}`;
+  else return `function ${c}`;
+}
+
 export function translateFunction(
   func: (...args: unknown[]) => void,
   types: FunctionType[],
   shapes: unknown[],
   functions: SimpleFunctionType[],
 ): string {
-  const jscode = `(${func.toString()})`;
+  const jscode = `(${func.toString()})`.replace('(main', '(function');
   const program = esprima.parseScript(jscode);
   const st = program.body[0];
 
@@ -85,7 +93,8 @@ export function translateFunction(
   if (st.type === 'ExpressionStatement' && st.expression.type === 'FunctionExpression') {
     const fucts = functions
       .map((f) => {
-        const pf = esprima.parseScript(f.body.toString()).body[0];
+        const fBody = prefixFunction(f.body.toString());
+        const pf = esprima.parseScript(fBody).body[0];
         if (pf.type === 'FunctionDeclaration') {
           const name = f.name ?? pf.id?.name;
           if (name == null) throw new Error('Declared function must have name or identifier');
@@ -100,21 +109,20 @@ export function translateFunction(
           // this.func.name <- set type to f type
           declarationTable.addFunction({ name, returnType: ret });
 
-          return `${getTypeInfoText(ret)} ${name}(global uchar *heap, global uint *next${
-            pf.params.length > 0 ? ', ' : ''
-          }${shape
-            .map((t, i) => {
-              const pi = pf.params[i];
-              if (pi.type === 'Identifier') {
-                // TODO: Change that
-                const tp = t ?? { name: 'int' };
-                declarationTable.declareVariable(pi.name, tp);
-                // declarationTable.declareVariable(pi.name, { name: 'object', global: false, objType: objSerializer.serializeObject() });
-                return `${getTypeInfoText(tp)} ${pi.name}`;
-              }
-              throw new Error('Function params must be identifiers');
-            })
-            .join(', ')}) {\n${parseStatement(pf.body)}\n}`;
+          return `${getTypeInfoText(ret)} ${name}(global uchar *heap, global uint *next${pf.params.length > 0 ? ', ' : ''
+            }${shape
+              .map((t, i) => {
+                const pi = pf.params[i];
+                if (pi.type === 'Identifier') {
+                  // TODO: Change that
+                  const tp = t ?? { name: 'int' };
+                  declarationTable.declareVariable(pi.name, tp);
+                  // declarationTable.declareVariable(pi.name, { name: 'object', global: false, objType: objSerializer.serializeObject() });
+                  return `${getTypeInfoText(tp)} ${pi.name}`;
+                }
+                throw new Error('Function params must be identifiers');
+              })
+              .join(', ')}) {\n${parseStatement(pf.body)}\n}`;
         }
       })
       .join('\n');
@@ -145,9 +153,8 @@ export function translateFunction(
       .join(', ');
     const code = st.expression.body.body.map((st) => parseStatement(st)).join('\n');
     const classes = objSerializer.getClasses();
-    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${
-      params.length > 0 ? ', ' : ''
-    }${params}) {\n${code}\n}`;
+    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${params.length > 0 ? ', ' : ''
+      }${params}) {\n${code}\n}`;
   }
   throw new Error('Bad function construction');
 }
