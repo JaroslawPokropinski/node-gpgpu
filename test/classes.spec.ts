@@ -2,19 +2,19 @@ import { expect } from 'chai';
 import { Gpgpu, KernelContext, kernelFunction, kernelEntry } from '../dist/binding.js';
 
 describe('Classes test', () => {
-  const instance = new Gpgpu();
-
   it('is defined', () => {
     expect(Gpgpu).to.be.not.undefined;
   });
 
+  const instance = new Gpgpu();
+
   it('works with classes', async () => {
     class MyKernel extends KernelContext {
       @kernelFunction(1, [1])
-      helper(x) { return x * 2; }
+      helper(x: number) { return x * 2; }
 
       @kernelEntry([{ type: 'Float32Array', readWrite: 'readwrite' }])
-      main(out) {
+      main(out: Float32Array) {
         const x = this.get_global_id(0);
         out[x] = this.helper(out[x]);
       }
