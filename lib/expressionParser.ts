@@ -76,7 +76,8 @@ export class ExpressionParser {
       },
       visitBinaryExpression(path) {
         const left = parseExpression(path.node.left);
-        val = `(${left.val} ${path.node.operator} ${parseExpression(path.node.right).val})`;
+        const operator = path.node.operator === '!==' ? '!=' : path.node.operator;
+        val = `(${left.val} ${operator} ${parseExpression(path.node.right).val})`;
         type = left.type;
 
         return false;
@@ -110,10 +111,28 @@ export class ExpressionParser {
           if (path.node.property.type !== 'Identifier') {
             throw new Error('Bad member expression with this');
           }
-          type = thisType.properties[path.node.property.name];
+          // handle cast to integer
           if (path.node.property.name === 'int') {
             val = `(int)`;
             return false;
+          }
+          // handle build in functions
+          type = thisType.properties[path.node.property.name];
+
+          // if is not built in handle defined functions
+          if (type == null) {
+            const property = path.node.property;
+            const ft = declarationTable._functions.reduce<null | typeof declarationTable._functions[0]>((p, c) => {
+              if (c.name === property.name) {
+                return c;
+              }
+              return p;
+            }, null);
+
+            if (ft == null) {
+              throw new Error(`Bad member expression with this.func, "${property.name}" is not defined`);
+            }
+            type = { name: 'function', returnType: ft.returnType, useHeap: true };
           }
           val = path.node.property.name;
         } else if (
@@ -151,7 +170,7 @@ export class ExpressionParser {
             sep = left.type.global ? '->' : '.';
           } else {
             console.log(path.node.property.type, left.type);
-            // throw new Error('Bad member expression');
+            throw new Error('Bad member expression');
           }
           val = `${left.val}${sep}${path.node.property.name}`;
         }
@@ -162,11 +181,11 @@ export class ExpressionParser {
         const callee = parseExpression(path.node.callee);
         const heapParams = `heap, next${path.node.arguments.length > 0 ? ', ' : ''}`;
         if (callee.type == null || callee.type.name !== 'function') {
-          // throw new Error('Called expression must be a function');
+          throw new Error(`Called expression must be a function and is ${JSON.stringify(callee)}`);
           val = `${callee.val}(${heapParams}${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
           return false;
         }
-
+        // throw new Error(`Called expression must be a function and is ${JSON.stringify(callee)}`);
         type = callee.type.returnType;
         val = `${callee.val}(${callee.type.useHeap ? heapParams : ''}${path.node.arguments
           .map((e) => parseExpression(e).val)

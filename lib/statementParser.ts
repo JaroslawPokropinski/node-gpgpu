@@ -52,7 +52,7 @@ export class StatementParser {
       },
       visitIfStatement(path) {
         val = `if (${parseExpression(path.node.test).val}) ${parseStatement(path.node.consequent)} ${
-          path.node.alternate ? parseStatement(path.node.alternate) : ''
+          path.node.alternate ? `else ${parseStatement(path.node.alternate)}` : ''
         }`;
         return false;
       },

@@ -1,6 +1,16 @@
 import { DeclarationTable } from './declarationTable';
 import { TypeInfo, getTypeInfoText } from './expressionParser';
 
+const compareEntries = (a: [string, unknown], b: [string, unknown]): number => {
+  if (a[0] < b[0]) {
+    return -1;
+  }
+  if (a[0] > b[0]) {
+    return 1;
+  }
+  return 0;
+};
+
 export default class ObjectSerializer {
   classes: string[] = [];
   classesMap = new Map<string, string>();
@@ -47,14 +57,16 @@ export default class ObjectSerializer {
           return [null, arr];
         } else {
           const properties: Record<string, TypeInfo> = {};
-          const obj = Object.entries(o).map<[string, string]>(([key, value]) => {
-            // const t = this.serializeObject(value, false);
-            // const typeOfObj = t[0];
-            // arr.push(...t[1]);
-            const typeOfObj = _serializeObject(value, arr)[0];
-            properties[key] = typeOfObj ?? { name: 'int' };
-            return [typeOfObj != null ? getTypeInfoText(typeOfObj) : '', key];
-          });
+          const obj = Object.entries(o)
+            .sort(compareEntries)
+            .map<[string, string]>(([key, value]) => {
+              // const t = this.serializeObject(value, false);
+              // const typeOfObj = t[0];
+              // arr.push(...t[1]);
+              const typeOfObj = _serializeObject(value, arr)[0];
+              properties[key] = typeOfObj ?? { name: 'int' };
+              return [typeOfObj != null ? getTypeInfoText(typeOfObj) : '', key];
+            });
 
           if (this._declarationTable != null) {
             const name = this._declarationTable.getObject(obj);
