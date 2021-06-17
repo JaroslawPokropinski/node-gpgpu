@@ -38,8 +38,4 @@ const f = instance
 await f(arr);
 
 expect(arr).to.eql(new Float32Array(1000).fill(2));
-
-const f1 = kernel.setSize([1000]); // Set kernel size...
-const f2 = kernel.setSize([1000], [10]); // ... and optionaly group size
-arr3.forEach((el) => assert.equal(el, 1000, 'Elements of array should equal 1000'));
 ```
