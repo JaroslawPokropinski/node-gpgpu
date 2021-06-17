@@ -3,6 +3,7 @@
 /build/Release
 /dist
 /build
+/.eslintcache
 
 # Vscode enironment
 /.vscode
