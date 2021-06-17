@@ -12,27 +12,33 @@ To build node-gpgpu one has to have opencl installed; after that call `npm i` an
 
 # Examples
 
-Examples can be found in tests such as test/test_binding.js. Here is one of them:
+Examples can be found in tests such as test/classes.spec.ts. Here is one of them:
 
 ```javascript
-const arr1 = new Float32Array(1000);
-const arr2 = new Float32Array(1000);
-const arr3 = new Float32Array(1000);
+class MyKernel extends KernelContext {
+  @kernelFunction(1, [1])
+  helper(x: number) {
+    return x * 2;
+  }
 
-arr1.forEach((_, i) => (arr1[i] = i));
-arr2.forEach((_, i) => (arr2[i] = 1000 - i));
+  @kernelEntry([{ type: 'Float32Array', readWrite: 'readwrite' }])
+  main(out: Float32Array) {
+    const x = this.get_global_id(0);
+    out[x] = this.helper(out[x]);
+  }
+}
 
-const kernel = instance.createKernel(
-  function (a, b, c) {
-    const x = this.get_global_id(0.0);
-    c[x] = a[x] + b[x];
-  },
-  [
-    { type: 'array', readWrite: 'read' },
-    { type: 'array', readWrite: 'read' },
-    { type: 'array', readWrite: 'write' },
-  ],
-);
+const arr = new Float32Array(1000);
+arr.fill(1);
+
+const f = instance
+  .createKernel2(MyKernel) // create kernel from a class
+  .setSize([1000]); // and set kernel size
+
+await f(arr);
+
+expect(arr).to.eql(new Float32Array(1000).fill(2));
+
 const f1 = kernel.setSize([1000]); // Set kernel size...
 const f2 = kernel.setSize([1000], [10]); // ... and optionaly group size
 arr3.forEach((el) => assert.equal(el, 1000, 'Elements of array should equal 1000'));
