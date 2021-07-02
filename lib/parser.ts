@@ -25,6 +25,9 @@ export class KernelContext {
   sqrt(n: number): number {
     throw new Error('Function sqrt is not callable outside of kernel');
   }
+  pow(x: number, y: number): number {
+    throw new Error('Function sqrt is not callable outside of kernel');
+  }
 }
 
 export type SimpleFunctionType = {

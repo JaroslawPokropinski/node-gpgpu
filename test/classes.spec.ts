@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { Gpgpu, KernelContext, kernelFunction, kernelEntry } from '../dist/binding.js';
+import { Gpgpu, KernelContext, kernelFunction, kernelEntry, DeviceType } from '../dist/binding.js';
 
 describe('Classes test', () => {
   it('is defined', () => {
     expect(Gpgpu).to.be.not.undefined;
   });
 
-  const instance = new Gpgpu();
+  const instance = new Gpgpu(DeviceType.default);
 
   it('works with classes', async () => {
     class MyKernel extends KernelContext {

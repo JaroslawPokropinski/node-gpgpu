@@ -9,25 +9,31 @@ interface IGpgpuNative {
     parserCode: string,
     types: string[],
     access: string[],
-  ): (ksize: number[]) => (...args: unknown[]) => Promise<void>;
+  ): (ksize: number[], gsize: number[]) => (...args: unknown[]) => Promise<void>;
 }
 
 export function kernelFunction(returnObj: unknown, shapeObj: unknown) {
-  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor): void {
     descriptor.value.shapeObj = shapeObj;
     descriptor.value.returnObj = returnObj;
   };
 }
 
 export function kernelEntry(typing: FunctionType[]) {
-  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor): void {
     descriptor.value.typing = typing;
   };
 }
 
+export enum DeviceType {
+  default = 1,
+  gpu = 2,
+  cpu = 4,
+}
+
 export class Gpgpu {
-  constructor() {
-    this._addonInstance = new addon.Gpgpu();
+  constructor(device: DeviceType = DeviceType.default) {
+    this._addonInstance = new addon.Gpgpu(device);
     this._objSerializer = new ObjectSerializer();
   }
 
@@ -36,7 +42,7 @@ export class Gpgpu {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     func: (this: KernelContext, ...args: any[]) => void,
     opt?: { functions?: SimpleFunctionType[] },
-  ): { setSize: (ksize: number[]) => (...args: unknown[]) => Promise<void> } {
+  ): { setSize: (ksize: number[], gsize?: number[]) => (...args: unknown[]) => Promise<void> } {
     const kernel = this._addonInstance.createKernel(
       translateFunction(
         func,
@@ -48,7 +54,7 @@ export class Gpgpu {
       types.map((t) => t.readWrite),
     );
     return {
-      setSize: (ksize) => (...args) => {
+      setSize: (ksize, gsize) => (...args) => {
         const serializedArgs = args.map((arg, i) => {
           if (types[i].type === 'Object') {
             return Buffer.concat(this._objSerializer.serializeObject(arg)[1]);
@@ -62,12 +68,14 @@ export class Gpgpu {
           }
           return arg;
         });
-        return kernel(ksize)(...serializedArgs);
+        return kernel(ksize, gsize ?? ksize.map(() => 1))(...serializedArgs);
       },
     };
   }
 
-  createKernel2(program: any): { setSize: (ksize: number[]) => (...args: unknown[]) => Promise<void> } {
+  createKernel2(
+    program: any,
+  ): { setSize: (ksize: number[], gsize?: number[]) => (...args: unknown[]) => Promise<void> } {
     new program(); // This initialises program.prototype.main.typing etc.
     const func = program.prototype.main;
     const types = program.prototype.main.typing;
@@ -94,7 +102,7 @@ export class Gpgpu {
       types.map((t: any) => t.readWrite),
     );
     return {
-      setSize: (ksize) => (...args) => {
+      setSize: (ksize, gsize) => (...args) => {
         const serializedArgs = args.map((arg, i) => {
           if (types[i].type === 'Object') {
             return Buffer.concat(this._objSerializer.serializeObject(arg)[1]);
@@ -108,7 +116,7 @@ export class Gpgpu {
           }
           return arg;
         });
-        return kernel(ksize)(...serializedArgs);
+        return kernel(ksize, gsize ?? ksize.map(() => 1))(...serializedArgs);
       },
     };
   }

@@ -9,19 +9,19 @@
 #include <CL/cl.h>
 #endif
 
-class Gpgpu : public Napi::ObjectWrap<Gpgpu>
-{
-public:
-    Gpgpu(const Napi::CallbackInfo &);
-    ~Gpgpu();
-    Napi::Value CreateKernel(const Napi::CallbackInfo &);
-    void handleError(const char *, int);
-    void log(const char *, ...);
+class Gpgpu : public Napi::ObjectWrap<Gpgpu> {
+ public:
+  Gpgpu(const Napi::CallbackInfo &);
+  ~Gpgpu();
+  Napi::Value CreateKernel(const Napi::CallbackInfo &);
+  void handleError(const char *, int);
+  void log(const char *, ...);
+  void logTime(const char *);
 
-    static Napi::Function GetClass(Napi::Env);
+  static Napi::Function GetClass(Napi::Env);
 
-private:
-    cl_context _context;
-    cl_command_queue _command_queue;
-    cl_device_id deviceId = NULL;
+ private:
+  cl_context _context;
+  cl_command_queue _command_queue;
+  cl_device_id deviceId = NULL;
 };

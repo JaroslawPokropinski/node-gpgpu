@@ -6,8 +6,8 @@
     "test": "ts-mocha 'test/**/*.spec.?s' --reporter list",
     "build": "tsc",
     "watch": "tsc -w",
-    "install": "cmake-js compile",
-    "rebuild": "node-gyp rebuild",
+    "install": "cmake-js compile -debug",
+    "rebuild": "cmake-js rebuild -debug",
     "prebuild": "prebuild --runtime napi --all --strip --verbose",
     "upload": "prebuild --runtime napi --upload ${GITHUB_TOKEN}",
     "prepare": "husky install"

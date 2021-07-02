@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 
+#include <chrono>
 #include <memory>
 #include <thread>
 
@@ -18,7 +19,7 @@ struct TsfnContext {
 
 void Gpgpu::handleError(const char *msg, int code) {
   if (code != 0) {
-    printf(msg, code);
+    log(msg, code);
   }
 }
 
@@ -35,7 +36,17 @@ void Gpgpu::log(const char *format, ...) {
   }
 }
 
+void Gpgpu::logTime(const char *name) {
+  static int64_t first =
+    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  auto millisec_since_epoch =
+    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+  log("[TIME] %s %d\n", name, millisec_since_epoch - first);
+}
+
 Gpgpu::Gpgpu(const Napi::CallbackInfo &info) : ObjectWrap(info) {
+  logTime("Create Gpgpu");
   // Get platform and device information
   cl_platform_id platform_id = NULL;
   cl_uint ret_num_devices;
@@ -49,7 +60,7 @@ Gpgpu::Gpgpu(const Napi::CallbackInfo &info) : ObjectWrap(info) {
     }
   }
 
-  ret = clGetDeviceIDs(platform_id, CL_DEVICE_TYPE_GPU, 1, &deviceId, &ret_num_devices);
+  ret = clGetDeviceIDs(platform_id, info[0].As<Napi::Number>().Int32Value(), 1, &deviceId, &ret_num_devices);
 
   // Create an OpenCL context
   this->_context = clCreateContext(NULL, 1, &deviceId, NULL, NULL, &ret);
@@ -65,6 +76,7 @@ Gpgpu::~Gpgpu() {
 }
 
 Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
+  logTime("Start CreateKernel");
   const size_t FIRST_ARG_INDEX = 2;
   Napi::Env env = info.Env();
 
@@ -125,7 +137,10 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
   cl_kernel kernel = clCreateKernel(program, "kernelFunc", &ret);
   handleError("clCreateKernel returned %d\n", ret);
 
+  logTime("End clCreateKernel");
+
   return Napi::Function::New(env, [=](const CallbackInfo &info2) {
+    logTime("Start promise function");
     if (!info2[0].IsArray()) {
       Napi::TypeError::New(env, "Bad kernel size").ThrowAsJavaScriptException();
       return env.Null();
@@ -147,6 +162,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
     }
 
     auto lamb = [=](const CallbackInfo &info) {
+      logTime("Start kernel function");
       cl_int ret;
       cl_mem stackMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 0x4, NULL, &ret);
       handleError("clCreateBuffer returned %d\n", ret);
@@ -236,6 +252,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
       auto waitForReadContext = new TsfnContext(info.Env());
       using Fn = void (*)(Napi::Env, void *, TsfnContext *);
       auto finalizerCallback = [=](Napi::Env env, void *finalizeData, TsfnContext *context) {
+        logTime("Start finalizerCallback");
         context->nativeThread.join();
         //    context->deferred.Resolve(Napi::Boolean::New(env,
         //    true));
@@ -256,9 +273,11 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
           env, Napi::Function::New(env, [](const CallbackInfo &info) { return info.Env().Null(); }), "TSFN2", 0, 1,
           waitForReadContext,
           [=](Napi::Env env, void *finalizeData, TsfnContext *context) {
+            logTime("Start TSFN2");
             context->nativeThread.join();
             context->deferred.Resolve(Napi::Boolean::New(env, true));
             delete context;
+            logTime("End TSFN2");
           },
           (void *)nullptr);
 
@@ -266,7 +285,9 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
           clFinish(_command_queue);
 
           waitForReadContext->tsfn.Release();
+          logTime("End waiting for TSFN2");
         });
+        logTime("End finalizerCallback");
       };
       waitForKernelContext->tsfn = Napi::ThreadSafeFunction::New(env,
         Napi::Function::New(info.Env(), [](const CallbackInfo &info) { return info.Env().Null(); }), "TSFN", 0, 1,
@@ -276,18 +297,23 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
         clFinish(_command_queue);
 
         waitForKernelContext->tsfn.Release();
+        logTime("End waiting for TSFN");
       });
 
       log("Ending kernel function\n");
+      logTime("End kernel function");
 
       return (Napi::Value)waitForReadContext->deferred.Promise();
     };
+    logTime("End promise function");
 
     return Napi::Function::New(env, lamb).As<Napi::Value>();
   });
 
   clReleaseKernel(kernel);
   clReleaseProgram(program);
+
+  logTime("End CreateKernel");
 
   return func;
 }

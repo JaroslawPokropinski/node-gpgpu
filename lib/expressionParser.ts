@@ -104,6 +104,7 @@ export class ExpressionParser {
               INFINITY: { name: 'double' },
               get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
               sqrt: { name: 'function', returnType: { name: 'double' }, useHeap: false },
+              pow: { name: 'function', returnType: { name: 'double' }, useHeap: false },
               int: { name: 'function', returnType: { name: 'int' }, useHeap: false },
             },
           };
