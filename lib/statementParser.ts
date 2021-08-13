@@ -43,6 +43,15 @@ export class StatementParser {
                 return `${getTypeInfoText(type)} ${d.id.name} = ${expr.val};`;
               }
 
+              if (expr.type.name === 'object' && !expr.type.orphan) {
+                if (expr.type.name === 'object' && !(expr.type.orphan ?? false))
+                  throw new Error('Cannot reasign objects (did you mean to use this.copy(obj))');
+              }
+
+              if (expr.type.name === 'object' && (expr.type.orphan ?? false)) {
+                expr.type.orphan = false;
+              }
+
               declarationTable.declareVariable(d.id.name, expr.type);
               return `${getTypeInfoText(expr.type)} ${d.id.name} = ${expr.val};`;
             }

@@ -6,7 +6,26 @@ type IntInfo = { name: 'int' };
 type DoubleInfo = { name: 'double' };
 type FunctionInfo = { name: 'function'; returnType: TypeInfo; useHeap: boolean };
 type ArrayInfo = { name: 'array'; contentType: TypeInfo };
-type ObjectInfo = { name: 'object'; global: boolean; objType: string; properties: Record<string, TypeInfo> };
+type ObjectInfo = {
+  name: 'object';
+  global: boolean;
+  objType: string;
+  orphan?: boolean;
+  properties: Record<string, TypeInfo>;
+};
+
+const deepCopy = (object: ObjectInfo, name: string): string => {
+  const parr: string[] = [];
+  for (const prop in object.properties) {
+    const p = object.properties[prop];
+    if (p.name === 'object') {
+      parr.push(deepCopy(p, `${name}.${prop}`));
+    } else {
+      parr.push(`.${prop} = ${name}.${prop}`);
+    }
+  }
+  return `(${object.objType}){ ${parr.join(', ')} }`;
+};
 
 export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | ArrayInfo | ObjectInfo;
 export function getTypeInfoText(ti: TypeInfo): string {
@@ -117,7 +136,12 @@ export class ExpressionParser {
           // handle cast to integer
           if (path.node.property.name === 'int') {
             val = `(int)`;
+            type = thisType.properties[path.node.property.name];
             return false;
+          }
+
+          if (path.node.property.name === 'copy') {
+            throw new Error('Unhandled copy');
           }
           // handle build in functions
           type = thisType.properties[path.node.property.name];
@@ -181,6 +205,24 @@ export class ExpressionParser {
         return false;
       },
       visitCallExpression(path) {
+        // handle this expression copy
+        const pcallee = path.node.callee;
+        if (
+          pcallee.type === 'MemberExpression' &&
+          pcallee.object.type === 'ThisExpression' &&
+          pcallee.property.type === 'Identifier' &&
+          pcallee.property.name === 'copy'
+        ) {
+          if (path.node.arguments.length !== 1) throw new Error(`Copy requires exactly 1 argument`);
+
+          const arg = parseExpression(path.node.arguments[0]);
+          if (arg.type.name !== 'object') throw new Error(`Copy requires object argument`);
+          type = { ...arg.type, orphan: true };
+          val = deepCopy(arg.type, arg.val);
+
+          return false;
+        }
+
         const callee = parseExpression(path.node.callee);
         const heapParams = `heap, next${path.node.arguments.length > 0 ? ', ' : ''}`;
         if (callee.type == null || callee.type.name !== 'function') {
@@ -197,10 +239,17 @@ export class ExpressionParser {
         return false;
       },
       visitThisExpression() {
-        throw new Error('This exception should be only in member expression');
+        throw new Error('This expression should be only in member expression');
       },
       visitAssignmentExpression(path) {
         const right = parseExpression(path.node.right);
+        if (right.type.name === 'object' && !(right.type.orphan ?? false))
+          throw new Error('Cannot reasign objects (did you mean to use this.copy(obj))');
+
+        if (right.type.name === 'object' && (right.type.orphan ?? false)) {
+          right.type.orphan = false;
+        }
+
         val = `${parseExpression(path.node.left).val} ${path.node.operator} ${right.val}`;
         type = right.type;
         return false;
@@ -229,7 +278,7 @@ export class ExpressionParser {
         );
         val = `(${objName}){ ${props.map((p) => `.${p.key} = ${p.value.val}`).join(', ')} }`;
         // val = `new${objName}(heap, next${props.length > 0 ? ', ' : ''}${props.map((p) => p.value.val).join(', ')})`;
-        type = { name: 'object', global: false, objType: `${objName}`, properties };
+        type = { name: 'object', global: false, objType: `${objName}`, properties, orphan: true };
         return false;
       },
       visitExpression(path) {

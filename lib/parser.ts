@@ -22,6 +22,9 @@ export class KernelContext {
   int(x: number): number {
     throw new Error('Function int is not callable outside of kernel');
   }
+  copy<T>(o: T): T {
+    throw new Error('Function copy is not callable outside of kernel');
+  }
   sqrt(n: number): number {
     throw new Error('Function sqrt is not callable outside of kernel');
   }
