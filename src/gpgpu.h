@@ -14,7 +14,7 @@ class Gpgpu : public Napi::ObjectWrap<Gpgpu> {
   Gpgpu(const Napi::CallbackInfo &);
   ~Gpgpu();
   Napi::Value CreateKernel(const Napi::CallbackInfo &);
-  void handleError(const char *, int);
+  void handleError(const Napi::Env &, const char *, int);
   void log(const char *, ...);
   void logTime(const char *);
 

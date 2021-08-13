@@ -26,7 +26,13 @@ export class KernelContext {
     throw new Error('Function sqrt is not callable outside of kernel');
   }
   pow(x: number, y: number): number {
-    throw new Error('Function sqrt is not callable outside of kernel');
+    throw new Error('Function pow is not callable outside of kernel');
+  }
+  sin(x: number): number {
+    throw new Error('Function sin is not callable outside of kernel');
+  }
+  cos(x: number): number {
+    throw new Error('Function cos is not callable outside of kernel');
   }
 }
 

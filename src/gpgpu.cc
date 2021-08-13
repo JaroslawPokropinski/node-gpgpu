@@ -17,9 +17,10 @@ struct TsfnContext {
   std::thread nativeThread;
 };
 
-void Gpgpu::handleError(const char *msg, int code) {
+void Gpgpu::handleError(const Napi::Env &env, const char *msg, int code) {
   if (code != 0) {
     log(msg, code);
+    Napi::Error::New(env, msg).ThrowAsJavaScriptException();
   }
 }
 
@@ -48,15 +49,16 @@ void Gpgpu::logTime(const char *name) {
 Gpgpu::Gpgpu(const Napi::CallbackInfo &info) : ObjectWrap(info) {
   logTime("Create Gpgpu");
   // Get platform and device information
+  auto env = info.Env();
   cl_platform_id platform_id = NULL;
   cl_uint ret_num_devices;
   cl_uint ret_num_platforms;
   cl_int ret = clGetPlatformIDs(1, &platform_id, &ret_num_platforms);
   if (ret != CL_SUCCESS) {
     if (ret == -1001) {
-      log("%s", "No valid ICDs found");
+      handleError(env, "No valid ICDs found\n", ret);
     } else {
-      log("clGetPlatformIDs failed with: %d", ret);
+      handleError(env, "clGetPlatformIDs failed with: %d\n", ret);
     }
   }
 
@@ -125,17 +127,17 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
   cl_program program = clCreateProgramWithSource(_context, 1, sources, &codeLength, &ret);
   ret = clBuildProgram(program, 1, &deviceId, NULL, NULL, NULL);
   if (ret != CL_SUCCESS) {
-    handleError("clBuildProgram returned %d\n", ret);
+    handleError(env, "clBuildProgram returned %d\n", ret);
     size_t len = 0;
     ret = clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
     char *buffer = (char *)calloc(len, sizeof(char));
     ret = clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
-    handleError("clGetProgramBuildInfo returned %d\n", ret);
+    handleError(env, "clGetProgramBuildInfo returned %d\n", ret);
     return (Napi::Value)Napi::Number::New(env, 1.0);
   }
   // Create the OpenCL kernel
   cl_kernel kernel = clCreateKernel(program, "kernelFunc", &ret);
-  handleError("clCreateKernel returned %d\n", ret);
+  handleError(env, "clCreateKernel returned %d\n", ret);
 
   logTime("End clCreateKernel");
 
@@ -163,15 +165,16 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
 
     auto lamb = [=](const CallbackInfo &info) {
       logTime("Start kernel function");
+      auto env = info.Env();
       cl_int ret;
       cl_mem stackMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 0x4, NULL, &ret);
-      handleError("clCreateBuffer returned %d\n", ret);
+      handleError(env, "clCreateBuffer returned %d\n", ret);
       cl_mem stackSizeMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 8, NULL, &ret);
-      handleError("clCreateBuffer returned %d\n", ret);
+      handleError(env, "clCreateBuffer returned %d\n", ret);
       ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), &stackMemObj);
-      handleError("clSetKernelArg returned %d\n", ret);
+      handleError(env, "clSetKernelArg returned %d\n", ret);
       ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), &stackSizeMemObj);
-      handleError("clSetKernelArg returned %d\n", ret);
+      handleError(env, "clSetKernelArg returned %d\n", ret);
 
       // Set the arguments of the kernel
       std::shared_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);
@@ -210,11 +213,11 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
           //    ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX,
           //    obj.ByteLength(), obj.Data());
           mem_objs[i] = clCreateBuffer(_context, CL_MEM_READ_WRITE, obj.ByteLength(), NULL, &ret);
-          handleError("clCreateBuffer returned: %d\n", ret);
+          handleError(env, "clCreateBuffer returned: %d\n", ret);
           if (access[i] == "read" || access[i] == "readwrite") {
             ret = clEnqueueWriteBuffer(
               _command_queue, mem_objs[i], CL_TRUE, 0, obj.ByteLength(), obj.Data(), 0, NULL, NULL);
-            handleError("clEnqueueWriteBuffer returned: %d\n", ret);
+            handleError(env, "clEnqueueWriteBuffer returned: %d\n", ret);
           }
           ret = clSetKernelArg(kernel, i + FIRST_ARG_INDEX, sizeof(cl_mem), &mem_objs[i]);
           log("clSetKernelArg returned: %d\n", ret);
@@ -223,7 +226,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
           return env.Null();
         }
 
-        handleError("clSetKernelArg returned %d\n", ret);
+        handleError(env, "clSetKernelArg returned %d\n", ret);
       }
 
       // Execute the OpenCL kernel on the list
@@ -233,7 +236,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
       ret =
         clEnqueueNDRangeKernel(_command_queue, kernel, kdim, NULL, ksize.get(), groupSize.get(), 0, NULL, &events[0]);
 
-      handleError("clEnqueueNDRangeKernel returned %d\n", ret);
+      handleError(env, "clEnqueueNDRangeKernel returned %d\n", ret);
 
       log("Create promise\n");
 
@@ -264,7 +267,7 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info) {
             // (float *)malloc(tarr.ByteLength());
             ret = clEnqueueReadBuffer(
               _command_queue, mem_objs[i], CL_FALSE, 0, outputsLengths[i], outputs[i], 0, NULL, &events[i + 1]);
-            handleError("clEnqueueReadBuffer returned %d\n", ret);
+            handleError(env, "clEnqueueReadBuffer returned %d\n", ret);
           }
         }
         delete context;
