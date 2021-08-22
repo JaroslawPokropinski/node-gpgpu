@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Gpgpu, KernelContext, kernelFunction, kernelEntry, DeviceType } from '../dist/binding.js';
+import { Gpgpu, KernelContext, kernelFunction, kernelEntry, DeviceType, Types } from '../dist/binding.js';
 
 describe('Classes test', () => {
   it('is defined', () => {
@@ -10,7 +10,7 @@ describe('Classes test', () => {
 
   it('works with classes', async () => {
     class MyKernel extends KernelContext {
-      @kernelFunction(1, [1])
+      @kernelFunction(Types.number, [Types.number])
       helper(x: number) {
         return x * 2;
       }
@@ -32,7 +32,6 @@ describe('Classes test', () => {
 
   it('handles copying objects', async () => {
     class MyKernel extends KernelContext {
-      @kernelFunction(1, [1])
       @kernelEntry([{ type: 'Float32Array', readWrite: 'readwrite' }])
       main(out: Float32Array) {
         const x = this.get_global_id(0);

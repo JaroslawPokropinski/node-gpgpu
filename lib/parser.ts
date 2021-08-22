@@ -4,13 +4,27 @@ import { StatementParser } from './statementParser';
 import ObjectSerializer from './objectSerializer';
 import { ExpressionParser, TypeInfo, getTypeInfoText } from './expressionParser';
 import { DeclarationTable } from './declarationTable';
+import { Types } from './binding';
 
-export type FunctionType = {
-  type: string;
-  readWrite: string;
-  shape?: unknown;
-  shapeObj?: unknown;
-};
+export type ShapeObjType =
+  | typeof Types['number']
+  | typeof Types['boolean']
+  | { [key: string]: ShapeObjType }
+  | ShapeObjType[];
+
+export type WriteInfo = 'write' | 'read' | 'readwrite';
+export type Float32ArrKernelArg = { type: 'Float32Array'; readWrite: WriteInfo };
+export type Float64ArrKernelArg = { type: 'Float64Array'; readWrite: WriteInfo };
+export type ObjectKernelArg = { type: 'Object'; readWrite: WriteInfo; shapeObj: ShapeObjType };
+export type ObjectArrKernelArg = { type: 'Object[]'; readWrite: WriteInfo; shapeObj: [ShapeObjType] };
+
+// export type FunctionType = {
+//   type: string;
+//   readWrite: WriteInfo;
+//   // shape?: unknown;
+//   shapeObj?: ShapeObjType;
+// };
+export type FunctionType = Float32ArrKernelArg | Float64ArrKernelArg | ObjectKernelArg | ObjectArrKernelArg;
 
 export class KernelContext {
   func: Record<string, Function> = (null as unknown) as Record<string, Function>;
@@ -77,11 +91,11 @@ function handleArgType(name: string, type: FunctionType): string {
   )(name);
 }
 
-const malloc = `global void* malloc(size_t size, global uchar *heap, global uint *next)
-{
-  uint index = atomic_add(next, size);
-  return heap+index;
-}`;
+// const malloc = `global void* malloc(size_t size, global uchar *heap, global uint *next)
+// {
+//   uint index = atomic_add(next, size);
+//   return heap+index;
+// }`;
 
 function prefixFunction(c: string): string {
   if (c.startsWith('function ')) return c;

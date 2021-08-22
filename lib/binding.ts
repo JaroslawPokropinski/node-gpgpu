@@ -1,4 +1,13 @@
-import { translateFunction, FunctionType, SimpleFunctionType, KernelContext } from './parser';
+import {
+  translateFunction,
+  FunctionType,
+  SimpleFunctionType,
+  KernelContext,
+  Float32ArrKernelArg,
+  ShapeObjType,
+  ObjectKernelArg,
+  ObjectArrKernelArg,
+} from './parser';
 import ObjectSerializer from './objectSerializer';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -12,16 +21,52 @@ interface IGpgpuNative {
   ): (ksize: number[], gsize: number[]) => (...args: unknown[]) => Promise<void>;
 }
 
-export function kernelFunction(returnObj: unknown, shapeObj: unknown) {
-  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor): void {
-    descriptor.value.shapeObj = shapeObj;
-    descriptor.value.returnObj = returnObj;
+export const Types = {
+  number: 1,
+  boolean: true,
+};
+
+export function kernelFunction<R, T extends unknown[]>(returnObj: R, shapeObj: [...T]) {
+  return function (
+    _target: unknown,
+    _propertyKey: string,
+    descriptor: TypedPropertyDescriptor<(...args: [...T]) => R>,
+  ): void {
+    const v = (descriptor.value as unknown) as { shapeObj: [...T]; returnObj: R };
+    v.shapeObj = shapeObj;
+    v.returnObj = returnObj;
   };
 }
 
-export function kernelEntry(typing: FunctionType[]) {
-  return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor): void {
-    descriptor.value.typing = typing;
+const mapWithType = (x: FunctionType): Float32Array | Object => {
+  if (x.type === 'Float32Array') return new Float32Array();
+  else return {};
+};
+
+export function kernelEntry<T extends FunctionType[]>(typing: [...T]) {
+  type Types = {
+    [K in keyof T]: T[K] extends FunctionType
+      ? T[K]['type'] extends 'Float32Array'
+        ? Float32Array
+        : T[K]['type'] extends 'Float64Array'
+        ? Float64Array
+        : T[K] extends ObjectKernelArg
+        ? T[K]['shapeObj']
+        : T[K] extends ObjectArrKernelArg
+        ? T[K]['shapeObj']
+        : T[K]['type']
+      : T[K];
+  };
+
+  // type Types = { [Key in keyof typeof typing]: Key extends Float32ArrKernelArg ? Float32Array : undefined };
+  // return function (_target: unknown, _propertyKey: string, descriptor: PropertyDescriptor): void {
+  return function (
+    _target: unknown,
+    _propertyKey: string,
+    descriptor: TypedPropertyDescriptor<(...args: [...Types]) => void>,
+  ): void {
+    const v = (descriptor.value as unknown) as { typing: FunctionType[] };
+    v.typing = typing;
   };
 }
 
@@ -47,7 +92,7 @@ export class Gpgpu {
       translateFunction(
         func,
         types,
-        types.flatMap((ft) => (ft.shapeObj ? [ft.shapeObj] : [])),
+        types.flatMap((ft) => (ft.type === 'Object' || ft.type === 'Object[]' ? [ft.shapeObj] : [])),
         opt?.functions ?? [],
       ),
       types.map((t) => t.type),

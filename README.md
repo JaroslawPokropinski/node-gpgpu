@@ -2,9 +2,15 @@
 
 node-gpgpu is Node.js library for gpu accelerated programming. It allows to write accelerated code using subset of javascript and use it as standard javascript functions.
 
+# Dependencies
+
+To install and use node-gpgpu you will need cmake, opencl library and opencl runtime installed.
+
 # Installation
 
 For now to install this package you have to clone repository and build it from scratch. Since it uses Napi in future installation will be as easy as calling `npm install ...`.
+
+You can also install it using `npm install JaroslawPokropinski/node-gpgpu`.
 
 # Build
 
@@ -12,30 +18,45 @@ To build node-gpgpu one has to have opencl installed; after that call `npm i` an
 
 # Examples
 
-Examples can be found in tests such as test/classes.spec.ts. Here is one of them:
+One of examples is numerical ingetration on the gpu. More examples can be found in tests such as test/classes.spec.ts.
 
 ```javascript
-class MyKernel extends KernelContext {
-  @kernelFunction(1, [1])
-  helper(x: number) {
-    return x * 2;
+import { Gpgpu, KernelContext, Types, kernelEntry, kernelFunction } from 'gpgpu';
+async function main() {
+  const n = 2000;
+  const iter = 216;
+  const gpgpu = new Gpgpu();
+
+  class PiIntegralKernel extends KernelContext {
+    @kernelFunction(Types.number, [Types.number])
+    f(x: number) {
+      return 2 * this.sqrt(1 - x * x);
+    }
+
+    @kernelEntry([
+      { type: 'Float32Array', readWrite: 'write' },
+      { type: 'Object', readWrite: 'read', shapeObj: { n: Types.number, iter: Types.number } },
+    ])
+    main(c: Float32Array, opt: { n: number, iter: number }) {
+      const id = this.get_global_id(0);
+
+      c[id] = 0.0;
+      for (let i = id * opt.iter; i < (id + 1) * opt.iter; i += 1) {
+        const dx = 2 / (opt.n * opt.iter);
+        const x1 = dx * i - 1;
+        const x2 = dx * (i + 1) - 1;
+
+        c[id] += (this.f(x2) + this.f(x1)) * 0.5 * dx;
+      }
+    }
   }
 
-  @kernelEntry([{ type: 'Float32Array', readWrite: 'readwrite' }])
-  main(out: Float32Array) {
-    const x = this.get_global_id(0);
-    out[x] = this.helper(out[x]);
-  }
+  const k = gpgpu.createKernel2(PiIntegralKernel).setSize([2000], [10]);
+  const c = new Float32Array(n);
+
+  await k(c, { n, iter });
+  const res = c.reduce((prev, curr) => prev + curr);
+  console.log(`Result: ${res}`);
 }
-
-const arr = new Float32Array(1000);
-arr.fill(1);
-
-const f = instance
-  .createKernel2(MyKernel) // create kernel from a class
-  .setSize([1000]); // and set kernel size
-
-await f(arr);
-
-expect(arr).to.eql(new Float32Array(1000).fill(2));
+main();
 ```
