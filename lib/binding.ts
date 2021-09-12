@@ -19,6 +19,7 @@ interface IGpgpuNative {
     types: string[],
     access: string[],
   ): (ksize: number[], gsize: number[]) => (...args: unknown[]) => Promise<void>;
+  getBuildInfo(): string;
 }
 
 export const Types = {
@@ -116,6 +117,10 @@ export class Gpgpu {
         return kernel(ksize, gsize ?? ksize.map(() => 1))(...serializedArgs);
       },
     };
+  }
+
+  getLastBuildInfo(): string {
+    return this._addonInstance.getBuildInfo();
   }
 
   createKernel2(

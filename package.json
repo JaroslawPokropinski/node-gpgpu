@@ -20,9 +20,10 @@
   "description": "Node.js library for gpu acceleration using pure javascript",
   "dependencies": {
     "acorn": "^7.4.0",
+    "bluebird": "^3.7.2",
     "esprima": "^4.0.1",
-    "node-addon-api": "^3.0.0",
-    "prebuild": "^10.0.0",
+    "node-addon-api": "^4.1.0",
+    "prebuild": "^3.0.3",
     "prebuild-install": "^5.3.5",
     "recast": "^0.19.1"
   },

@@ -93,6 +93,12 @@ Gpgpu::~Gpgpu()
   clReleaseContext(_context);
 }
 
+Napi::Value Gpgpu::GetBuildInfo(const Napi::CallbackInfo &info)
+{
+  Napi::Env env = info.Env();
+  return Napi::String::New(env, lastBuildLog.c_str());
+}
+
 Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
 {
   logTime("Start CreateKernel");
@@ -154,8 +160,9 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
     handleError(env, "clBuildProgram returned %d\n", ret);
     size_t len = 0;
     ret = clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, 0, NULL, &len);
-    char *buffer = (char *)calloc(len, sizeof(char));
-    ret = clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, len, buffer, NULL);
+    std::shared_ptr<char[]> buffer(new char[len]);
+    ret = clGetProgramBuildInfo(program, deviceId, CL_PROGRAM_BUILD_LOG, len, buffer.get(), NULL);
+    lastBuildLog = std::string(buffer.get());
     handleError(env, "clGetProgramBuildInfo returned %d\n", ret);
     return (Napi::Value)Napi::Number::New(env, 1.0);
   }
@@ -381,6 +388,7 @@ Napi::Function Gpgpu::GetClass(Napi::Env env)
   return DefineClass(env, "Gpgpu",
                      {
                          Gpgpu::InstanceMethod("createKernel", &Gpgpu::CreateKernel),
+                         Gpgpu::InstanceMethod("getBuildInfo", &Gpgpu::GetBuildInfo),
                      });
 }
 
