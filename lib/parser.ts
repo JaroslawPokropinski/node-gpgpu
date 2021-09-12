@@ -51,6 +51,10 @@ export class KernelContext {
   cos(x: number): number {
     throw new Error('Function cos is not callable outside of kernel');
   }
+
+  array<T>(shape: T, size: number): T[] {
+    throw new Error('Function array is not callable outside of kernel');
+  }
 }
 
 export type SimpleFunctionType = {

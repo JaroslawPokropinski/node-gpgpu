@@ -36,6 +36,37 @@ export class StatementParser {
               if (d.id.type !== 'Identifier') {
                 throw new Error('Declaration must be identifier');
               }
+
+              // handle array creation
+              if (
+                d.init.type === 'CallExpression' &&
+                d.init.callee.type === 'MemberExpression' &&
+                d.init.callee.object.type === 'ThisExpression' &&
+                d.init.callee.property.type === 'Identifier' &&
+                d.init.callee.property.name === 'array'
+              ) {
+                if (d.init.arguments.length !== 2) throw new Error(`Array requires exactly 2 arguments`);
+                const arg0 = d.init.arguments[0];
+                const arg1 = d.init.arguments[1];
+                if (arg0.type !== 'Literal' && arg0.type !== 'ObjectExpression') {
+                  throw new Error(
+                    `Array must be typed using literal or object expression: at (${
+                      (arg0.loc?.start.line, arg0.loc?.start.column)
+                    })`,
+                  );
+                }
+
+                if (arg1.type !== 'Literal' || typeof arg1.value !== 'number') {
+                  throw new Error(
+                    `Array must have number as second argument: at (${(arg0.loc?.start.line, arg0.loc?.start.column)})`,
+                  );
+                }
+                const argType = parseExpression(arg0).type;
+                if (argType.name !== 'double' && argType.name !== 'object') throw new Error();
+
+                declarationTable.declareVariable(d.id.name, { name: 'array', contentType: argType });
+                return `${getTypeInfoText(argType)} ${d.id.name}[${arg1.value}];`;
+              }
               const expr = parseExpression(d.init);
               if (expr.type.name === 'object' && expr.type.global) {
                 const type = { ...expr.type, global: false };

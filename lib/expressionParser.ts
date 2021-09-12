@@ -5,6 +5,7 @@ import { SimpleFunctionType } from './parser';
 type IntInfo = { name: 'int' };
 type DoubleInfo = { name: 'double' };
 type FunctionInfo = { name: 'function'; returnType: TypeInfo; useHeap: boolean };
+type GenFunctionInfo = { name: 'gfunction' };
 type ArrayInfo = { name: 'array'; contentType: TypeInfo };
 type ObjectInfo = {
   name: 'object';
@@ -19,7 +20,7 @@ const deepCopy = (object: ObjectInfo, name: string): string => {
   for (const prop in object.properties) {
     const p = object.properties[prop];
     if (p.name === 'object') {
-      parr.push(deepCopy(p, `${name}.${prop}`));
+      parr.push(`.${prop} = ${deepCopy(p, `${name}.${prop}`)}`);
     } else {
       parr.push(`.${prop} = ${name}.${prop}`);
     }
@@ -27,7 +28,7 @@ const deepCopy = (object: ObjectInfo, name: string): string => {
   return `(${object.objType}){ ${parr.join(', ')} }`;
 };
 
-export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | ArrayInfo | ObjectInfo;
+export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | GenFunctionInfo | ArrayInfo | ObjectInfo;
 export function getTypeInfoText(ti: TypeInfo): string {
   if (ti.name === 'int' || ti.name === 'double') {
     return ti.name;
@@ -128,6 +129,7 @@ export class ExpressionParser {
               pow: { name: 'function', returnType: { name: 'double' }, useHeap: false },
               sin: { name: 'function', returnType: { name: 'double' }, useHeap: false },
               cos: { name: 'function', returnType: { name: 'double' }, useHeap: false },
+              array: { name: 'gfunction' },
             },
           };
 
@@ -218,10 +220,21 @@ export class ExpressionParser {
 
           const arg = parseExpression(path.node.arguments[0]);
           if (arg.type.name !== 'object') throw new Error(`Copy requires object argument`);
+
           type = { ...arg.type, orphan: true };
           val = deepCopy(arg.type, arg.val);
 
           return false;
+        }
+
+        // handle unexpected this.array
+        if (
+          pcallee.type === 'MemberExpression' &&
+          pcallee.object.type === 'ThisExpression' &&
+          pcallee.property.type === 'Identifier' &&
+          pcallee.property.name === 'array'
+        ) {
+          throw new Error(`Unhandled array creation at (${pcallee.loc?.start.line}, ${pcallee.loc?.start.column})`);
         }
 
         const callee = parseExpression(path.node.callee);
@@ -232,12 +245,42 @@ export class ExpressionParser {
           return false;
         }
         // throw new Error(`Called expression must be a function and is ${JSON.stringify(callee)}`);
+
         type = callee.type.returnType;
         val = `${callee.val}(${callee.type.useHeap ? heapParams : ''}${path.node.arguments
           .map((e) => parseExpression(e).val)
           .join(', ')})`;
 
         return false;
+
+        // Else if generic function
+        // const arg0 = path.node.arguments[0];
+        // if (arg0.type !== 'Literal' && arg0.type !== 'ObjectExpression') {
+        //   throw new Error(
+        //     `Generic function must be typed using literal or object expression: at (${
+        //       (arg0.loc?.start.line, arg0.loc?.start.column)
+        //     })`,
+        //   );
+        // }
+        // if (arg0.type === 'Literal') {
+        //   if (typeof arg0.value !== 'number') {
+        //     throw new Error(
+        //       `Generic function must be typed using number literal: at (${
+        //         (arg0.loc?.start.line, arg0.loc?.start.column)
+        //       })`,
+        //     );
+        //   }
+        //   type = { name: 'double' };
+        // } else {
+        //   type = parseExpression(arg0).type; // {name: 'object', global: false, orphan: true, objType: 'SHAPE', properties: properties}
+        // }
+
+        // val = `${callee.val}(${path.node.arguments
+        //   .slice(1)
+        //   .map((e) => parseExpression(e).val)
+        //   .join(', ')})`;
+
+        // return false;
       },
       visitThisExpression() {
         throw new Error('This expression should be only in member expression');
