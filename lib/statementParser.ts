@@ -44,16 +44,22 @@ export class StatementParser {
               }
 
               if (expr.type.name === 'object' && !expr.type.orphan) {
-                if (expr.type.name === 'object' && !(expr.type.orphan ?? false))
-                  throw new Error('Cannot reasign objects (did you mean to use this.copy(obj))');
+                if (expr.type.name === 'object' && !expr.type.orphan) {
+                  throw new Error(
+                    `Cannot reasign objects (did you mean to use this.copy(obj)): for '${expr.val}' at (${
+                      d.loc?.start.line ?? '?'
+                    },${d.loc?.start.column ?? '?'})' for '${expr.val}'`,
+                  );
+                }
               }
 
-              if (expr.type.name === 'object' && (expr.type.orphan ?? false)) {
-                expr.type.orphan = false;
+              const type = { ...expr.type };
+              if (type.name === 'object' && type.orphan) {
+                type.orphan = false;
               }
 
-              declarationTable.declareVariable(d.id.name, expr.type);
-              return `${getTypeInfoText(expr.type)} ${d.id.name} = ${expr.val};`;
+              declarationTable.declareVariable(d.id.name, type);
+              return `${getTypeInfoText(type)} ${d.id.name} = ${expr.val};`;
             }
           })
           .join('\n');

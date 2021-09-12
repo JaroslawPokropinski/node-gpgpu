@@ -48,4 +48,28 @@ describe('Classes test', () => {
     await fab(arr);
     expect(arr).to.eql(new Float32Array(1000).map((_, i) => i));
   });
+
+  it('handles returning objects', async () => {
+    class MyKernel extends KernelContext {
+      @kernelFunction({ x: Types.number }, [])
+      testFoo(): { x: number } {
+        return { x: 1 };
+      }
+
+      @kernelEntry([{ type: 'Float32Array', readWrite: 'readwrite' }])
+      main(out: Float32Array) {
+        const x = this.get_global_id(0);
+        const z = this.testFoo();
+        const t = this.testFoo();
+        out[x] = z.x;
+      }
+    }
+    const arr = new Float32Array(1000);
+    arr.fill(1);
+
+    const fab = instance.createKernel2(MyKernel).setSize([1000]);
+
+    await fab(arr);
+    expect(arr).to.eql(new Float32Array(1000).map(() => 1));
+  });
 });

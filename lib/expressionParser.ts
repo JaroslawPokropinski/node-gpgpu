@@ -10,7 +10,7 @@ type ObjectInfo = {
   name: 'object';
   global: boolean;
   objType: string;
-  orphan?: boolean;
+  orphan: boolean;
   properties: Record<string, TypeInfo>;
 };
 
@@ -119,6 +119,7 @@ export class ExpressionParser {
             name: 'object',
             global: false,
             objType: 'void',
+            orphan: false,
             properties: {
               INFINITY: { name: 'double' },
               get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
@@ -294,7 +295,7 @@ export class ExpressionParser {
 
     const asType = type as TypeInfo;
     if (asType.name === 'object' && asType.global) {
-      console.log({ val: `(${val})`, type: { ...asType, global: false } });
+      // console.log({ val: `(${val})`, type: { ...asType, global: false } });
       return { val: `(${val})`, type: { ...asType, global: false } };
     }
 

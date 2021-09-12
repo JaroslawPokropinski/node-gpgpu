@@ -113,7 +113,7 @@ export function translateFunction(
   functions: SimpleFunctionType[],
 ): string {
   const jscode = `(${func.toString()})`.replace('(main', '(function');
-  const program = esprima.parseScript(jscode);
+  const program = esprima.parseScript(jscode, { loc: true });
   const st = program.body[0];
 
   const declarationTable = new DeclarationTable();
@@ -126,7 +126,7 @@ export function translateFunction(
     const fucts = functions
       .map((f) => {
         const fBody = prefixFunction(f.body.toString());
-        const pf = esprima.parseScript(fBody).body[0];
+        const pf = esprima.parseScript(fBody, { loc: true }).body[0];
         if (pf.type === 'FunctionDeclaration') {
           const name = f.name ?? pf.id?.name;
           if (name == null) throw new Error('Declared function must have name or identifier');
