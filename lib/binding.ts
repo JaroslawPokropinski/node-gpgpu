@@ -77,16 +77,19 @@ export enum DeviceType {
   cpu = 4,
 }
 
+interface KernelLike<T extends unknown[]> {
+  main(args: [...T]): void;
+}
+
 export class Gpgpu {
   constructor(device: DeviceType = DeviceType.default) {
     this._addonInstance = new addon.Gpgpu(device);
     this._objSerializer = new ObjectSerializer();
   }
 
-  createKernel(
+  createFuncKernel<T extends unknown[]>(
     types: FunctionType[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    func: (this: KernelContext, ...args: any[]) => void,
+    func: (this: KernelContext, ...args: [...T]) => void,
     opt?: { functions?: SimpleFunctionType[] },
   ): { setSize: (ksize: number[], gsize?: number[]) => (...args: unknown[]) => Promise<void> } {
     const kernel = this._addonInstance.createKernel(
@@ -123,16 +126,18 @@ export class Gpgpu {
     return this._addonInstance.getBuildInfo();
   }
 
-  createKernel2(
-    program: any,
-  ): { setSize: (ksize: number[], gsize?: number[]) => (...args: unknown[]) => Promise<void> } {
+  createClassKernel<T extends KernelContext, Q extends unknown[]>(program: {
+    new (): T;
+    prototype: { main: (...args: [...Q]) => void };
+  }): { setSize: (ksize: number[], gsize?: number[]) => (...args: Q) => Promise<void> } {
     new program(); // This initialises program.prototype.main.typing etc.
+    const anyProgram = program as any;
     const func = program.prototype.main;
-    const types = program.prototype.main.typing;
+    const types = anyProgram.prototype.main.typing;
     const functions = Object.getOwnPropertyNames(program.prototype)
-      .filter((item) => typeof program.prototype[item] === 'function')
+      .filter((item) => typeof anyProgram.prototype[item] === 'function')
       .filter((k) => k !== 'constructor' && k !== 'main')
-      .map((f) => program.prototype[f])
+      .map((f) => anyProgram.prototype[f])
       .map((f) => ({
         name: f.name,
         return: f.return,
@@ -169,6 +174,37 @@ export class Gpgpu {
         return kernel(ksize, gsize ?? ksize.map(() => 1))(...serializedArgs);
       },
     };
+  }
+
+  createKernel<Q extends unknown[]>(
+    types: FunctionType[],
+    func: (this: KernelContext, ...args: [...Q]) => void,
+    opt?: { functions?: SimpleFunctionType[] },
+  ): { setSize: (ksize: number[], gsize?: number[]) => (...args: unknown[]) => Promise<void> };
+
+  createKernel<T extends KernelContext, Q extends unknown[]>(program: {
+    new (): T;
+    prototype: { main: (...args: [...Q]) => void };
+  }): { setSize: (ksize: number[], gsize?: number[]) => (...args: Q) => Promise<void> };
+  createKernel<T extends KernelContext, Q extends unknown[]>(
+    arg0:
+      | {
+          new (): T;
+          prototype: { main: (...args: [...Q]) => void };
+        }
+      | FunctionType[],
+    arg1?: (this: KernelContext, ...args: [...Q]) => void,
+    arg2?: { functions?: SimpleFunctionType[] },
+  ): { setSize: (ksize: number[], gsize?: number[]) => (...args: Q) => Promise<void> } {
+    if (Array.isArray(arg0) && arg1 != null) {
+      return this.createFuncKernel(arg0, arg1, arg2);
+    }
+
+    if (!Array.isArray(arg0)) {
+      return this.createClassKernel(arg0);
+    }
+
+    throw new Error();
   }
 
   // private members

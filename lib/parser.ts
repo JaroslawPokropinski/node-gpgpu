@@ -111,8 +111,8 @@ function prefixFunction(c: string): string {
   else return `function ${c}`;
 }
 
-export function translateFunction(
-  func: (...args: unknown[]) => void,
+export function translateFunction<T extends unknown[]>(
+  func: (...args: T) => void,
   types: FunctionType[],
   shapes: unknown[],
   functions: SimpleFunctionType[],

@@ -24,7 +24,7 @@ describe('Classes test', () => {
     const arr = new Float32Array(1000);
     arr.fill(1);
 
-    const fab = instance.createKernel2(MyKernel).setSize([1000]);
+    const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
     expect(arr).to.eql(new Float32Array(1000).fill(2));
@@ -43,7 +43,7 @@ describe('Classes test', () => {
     const arr = new Float32Array(1000);
     arr.fill(1);
 
-    const fab = instance.createKernel2(MyKernel).setSize([1000]);
+    const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
     expect(arr).to.eql(new Float32Array(1000).map((_, i) => i));
@@ -67,7 +67,7 @@ describe('Classes test', () => {
     const arr = new Float32Array(1000);
     arr.fill(1);
 
-    const fab = instance.createKernel2(MyKernel).setSize([1000]);
+    const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
     expect(arr).to.eql(new Float32Array(1000).map(() => 1));
