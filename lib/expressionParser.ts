@@ -123,6 +123,7 @@ export class ExpressionParser {
             orphan: false,
             properties: {
               INFINITY: { name: 'double' },
+              M_PI: { name: 'double' },
               get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
               int: { name: 'function', returnType: { name: 'int' }, useHeap: false },
               sqrt: { name: 'function', returnType: { name: 'double' }, useHeap: false },
@@ -200,7 +201,9 @@ export class ExpressionParser {
             sep = left.type.global ? '->' : '.';
           } else {
             console.log(path.node.property.type, left.type);
-            throw new Error('Bad member expression');
+            throw new Error(
+              `Bad member expression at (${path.node.property.loc?.start.line}, ${path.node.property.loc?.start.column})`,
+            );
           }
           val = `${left.val}${sep}${path.node.property.name}`;
         }

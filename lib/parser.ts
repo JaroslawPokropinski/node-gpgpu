@@ -29,6 +29,7 @@ export type FunctionType = Float32ArrKernelArg | Float64ArrKernelArg | ObjectKer
 export class KernelContext {
   func: Record<string, Function> = (null as unknown) as Record<string, Function>;
   INFINITY: number = (null as unknown) as number;
+  M_PI: number = (null as unknown) as number;
 
   get_global_id(dim: number): number {
     throw new Error('Function get_global_id is not callable outside of kernel');
