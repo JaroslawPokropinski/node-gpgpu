@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { Gpgpu, KernelContext, kernelFunction, kernelEntry, DeviceType, Types } from '../dist/binding.js';
+const addon = require('../build/Release/gpgpu.node');
 
 describe('Classes test', () => {
   it('is defined', () => {

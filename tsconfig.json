@@ -4,11 +4,12 @@
   "compilerOptions": {
     "declaration": true,
     "experimentalDecorators": true,
-    "lib": ["esnext"],
+    "lib": ["esnext", "dom"],
     "module": "commonjs",
     "outDir": "./dist",
     "rootDir": "./lib",
     "strict": true,
-    "target": "es6"
+    "target": "es6",
+    "noImplicitAny": false
   }
 }

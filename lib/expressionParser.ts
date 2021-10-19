@@ -2,7 +2,7 @@ import * as recast from 'recast';
 import { DeclarationTable } from './declarationTable';
 import { SimpleFunctionType } from './parser';
 
-type IntInfo = { name: 'int' };
+type ScalarType = { name: 'int' } | { name: 'uint' } | { name: 'long' } | { name: 'ulong' };
 type DoubleInfo = { name: 'double' };
 type FunctionInfo = { name: 'function'; returnType: TypeInfo; useHeap: boolean };
 type GenFunctionInfo = { name: 'gfunction' };
@@ -10,6 +10,7 @@ type ArrayInfo = { name: 'array'; contentType: TypeInfo };
 type ObjectInfo = {
   name: 'object';
   global: boolean;
+  reference?: boolean;
   objType: string;
   orphan: boolean;
   properties: Record<string, TypeInfo>;
@@ -28,15 +29,19 @@ const deepCopy = (object: ObjectInfo, name: string): string => {
   return `(${object.objType}){ ${parr.join(', ')} }`;
 };
 
-export type TypeInfo = IntInfo | DoubleInfo | FunctionInfo | GenFunctionInfo | ArrayInfo | ObjectInfo;
+export type TypeInfo = ScalarType | DoubleInfo | FunctionInfo | GenFunctionInfo | ArrayInfo | ObjectInfo;
 export function getTypeInfoText(ti: TypeInfo): string {
-  if (ti.name === 'int' || ti.name === 'double') {
+  if (['int', 'uint', 'long', 'ulong', 'double'].includes(ti.name)) {
     return ti.name;
   }
   if (ti.name === 'object') {
     if (ti.global) {
       return `${ti.objType}`;
       // return `global ${ti.objType}*`;
+    }
+
+    if (ti.reference) {
+      return `${ti.objType}*`;
     }
 
     return `${ti.objType}`;
@@ -126,6 +131,9 @@ export class ExpressionParser {
               M_PI: { name: 'double' },
               get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
               int: { name: 'function', returnType: { name: 'int' }, useHeap: false },
+              uint: { name: 'function', returnType: { name: 'uint' }, useHeap: false },
+              long: { name: 'function', returnType: { name: 'long' }, useHeap: false },
+              ulong: { name: 'function', returnType: { name: 'ulong' }, useHeap: false },
               sqrt: { name: 'function', returnType: { name: 'double' }, useHeap: false },
               pow: { name: 'function', returnType: { name: 'double' }, useHeap: false },
               sin: { name: 'function', returnType: { name: 'double' }, useHeap: false },
@@ -140,6 +148,24 @@ export class ExpressionParser {
           // handle cast to integer
           if (path.node.property.name === 'int') {
             val = `(int)`;
+            type = thisType.properties[path.node.property.name];
+            return false;
+          }
+
+          if (path.node.property.name === 'uint') {
+            val = `(uint)`;
+            type = thisType.properties[path.node.property.name];
+            return false;
+          }
+
+          if (path.node.property.name === 'long') {
+            val = `(long)`;
+            type = thisType.properties[path.node.property.name];
+            return false;
+          }
+
+          if (path.node.property.name === 'ulong') {
+            val = `(ulong)`;
             type = thisType.properties[path.node.property.name];
             return false;
           }
@@ -251,7 +277,13 @@ export class ExpressionParser {
 
         type = callee.type.returnType;
         val = `${callee.val}(${callee.type.useHeap ? heapParams : ''}${path.node.arguments
-          .map((e) => parseExpression(e).val)
+          .map((e) => {
+            const pe = parseExpression(e);
+            // if (pe.type.name === 'object') {
+            //   return `&(${pe.val})`;
+            // }
+            return pe.val;
+          })
           .join(', ')})`;
 
         return false;

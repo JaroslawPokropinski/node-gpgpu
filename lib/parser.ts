@@ -37,6 +37,15 @@ export class KernelContext {
   int(x: number): number {
     throw new Error('Function int is not callable outside of kernel');
   }
+  uint(x: number): number {
+    throw new Error('Function int is not callable outside of kernel');
+  }
+  long(x: number): number {
+    throw new Error('Function int is not callable outside of kernel');
+  }
+  ulong(x: number): number {
+    throw new Error('Function int is not callable outside of kernel');
+  }
   copy<T>(o: T): T {
     throw new Error('Function copy is not callable outside of kernel');
   }
@@ -154,6 +163,14 @@ export function translateFunction<T extends unknown[]>(
               if (pi.type === 'Identifier') {
                 // TODO: Change that
                 const tp = t ?? { name: 'int' };
+
+                // if (tp.name === 'object') {
+                //   const ntp: TypeInfo = { ...tp, reference: true };
+                //   declarationTable.declareVariable(pi.name, ntp);
+
+                //   return `${getTypeInfoText(ntp)} ${pi.name}`;
+                // }
+
                 declarationTable.declareVariable(pi.name, tp);
                 // declarationTable.declareVariable(pi.name, { name: 'object', global: false, objType: objSerializer.serializeObject() });
                 return `${getTypeInfoText(tp)} ${pi.name}`;
