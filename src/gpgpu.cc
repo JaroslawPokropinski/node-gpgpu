@@ -102,7 +102,7 @@ Napi::Value Gpgpu::GetBuildInfo(const Napi::CallbackInfo &info)
 Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
 {
   logTime("Start CreateKernel");
-  const size_t FIRST_ARG_INDEX = 2;
+  const size_t FIRST_ARG_INDEX = 0;
   Napi::Env env = info.Env();
 
   if (info.Length() < 3)
@@ -203,14 +203,6 @@ Napi::Value Gpgpu::CreateKernel(const Napi::CallbackInfo &info)
                                  logTime("Start kernel function");
                                  auto env = info.Env();
                                  cl_int ret;
-                                 cl_mem stackMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 0x4, NULL, &ret);
-                                 handleError(env, "clCreateBuffer returned %d\n", ret);
-                                 cl_mem stackSizeMemObj = clCreateBuffer(_context, CL_MEM_READ_WRITE, 8, NULL, &ret);
-                                 handleError(env, "clCreateBuffer returned %d\n", ret);
-                                 ret = clSetKernelArg(kernel, 0, sizeof(cl_mem), &stackMemObj);
-                                 handleError(env, "clSetKernelArg returned %d\n", ret);
-                                 ret = clSetKernelArg(kernel, 1, sizeof(cl_mem), &stackSizeMemObj);
-                                 handleError(env, "clSetKernelArg returned %d\n", ret);
 
                                  // Set the arguments of the kernel
                                  std::shared_ptr<cl_mem[]> mem_objs(new cl_mem[info.Length()]);

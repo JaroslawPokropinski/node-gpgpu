@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/ban-types */
 import * as esprima from 'esprima';
 
 import { StatementParser } from './statementParser';
@@ -18,18 +20,12 @@ export type Float64ArrKernelArg = { type: 'Float64Array'; readWrite: WriteInfo }
 export type ObjectKernelArg = { type: 'Object'; readWrite: WriteInfo; shapeObj: ShapeObjType };
 export type ObjectArrKernelArg = { type: 'Object[]'; readWrite: WriteInfo; shapeObj: [ShapeObjType] };
 
-// export type FunctionType = {
-//   type: string;
-//   readWrite: WriteInfo;
-//   // shape?: unknown;
-//   shapeObj?: ShapeObjType;
-// };
 export type FunctionType = Float32ArrKernelArg | Float64ArrKernelArg | ObjectKernelArg | ObjectArrKernelArg;
 
 export class KernelContext {
-  func: Record<string, Function> = (null as unknown) as Record<string, Function>;
-  INFINITY: number = (null as unknown) as number;
-  M_PI: number = (null as unknown) as number;
+  func: Record<string, Function> = null as unknown as Record<string, Function>;
+  INFINITY: number = null as unknown as number;
+  M_PI: number = null as unknown as number;
 
   get_global_id(dim: number): number {
     throw new Error('Function get_global_id is not callable outside of kernel');
@@ -145,7 +141,16 @@ export function translateFunction<T extends unknown[]>(
           const name = f.name ?? pf.id?.name;
           if (name == null) throw new Error('Declared function must have name or identifier');
 
-          const shape = /*f.shape ??*/ f.shapeObj?.map((obj) => objSerializer.serializeObject(obj, false)[0]);
+          const shape = /*f.shape ??*/ f.shapeObj
+            ?.map((obj) => objSerializer.serializeObject(obj, false)[0])
+            ?.map((obj) => {
+              // accept objects by reference
+              if (obj && obj.name === 'object' && !obj.global) {
+                return { ...obj, reference: true };
+              }
+              return obj;
+            });
+
           if (shape == null) throw new Error('Shape or shapeObj must be provided');
 
           const returnObj = f.returnObj != null ? objSerializer.serializeObject(f.returnObj, false)[0] : null;
@@ -155,9 +160,7 @@ export function translateFunction<T extends unknown[]>(
           // this.func.name <- set type to f type
           declarationTable.addFunction({ name, returnType: ret });
 
-          return `${getTypeInfoText(ret)} ${name}(global uchar *heap, global uint *next${
-            pf.params.length > 0 ? ', ' : ''
-          }${shape
+          return `${getTypeInfoText(ret)} ${name}(${shape
             .map((t, i) => {
               const pi = pf.params[i];
               if (pi.type === 'Identifier') {
@@ -208,9 +211,7 @@ export function translateFunction<T extends unknown[]>(
       .join(', ');
     const code = st.expression.body.body.map((st) => parseStatement(st)).join('\n');
     const classes = objSerializer.getClasses();
-    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(global uchar *heap, global uint *next${
-      params.length > 0 ? ', ' : ''
-    }${params}) {\n${code}\n}`;
+    return `${classes}\n\n${fucts}\n\n__kernel void kernelFunc(${params}) {\n${code}\n}`;
   }
   throw new Error('Bad function construction');
 }

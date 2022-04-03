@@ -1,10 +1,29 @@
 import * as recast from 'recast';
 import { DeclarationTable } from './declarationTable';
-import { SimpleFunctionType } from './parser';
+export class ExpressionContext {
+  static count = 0;
+  variables = new Array<{ name: string; value?: string; type: TypeInfo }>();
+  declareVariable(type: TypeInfo, value?: string) {
+    const name = `___builtin_temp_${ExpressionContext.count++}`;
+    this.variables.push({ name, type, value });
+
+    return name;
+  }
+  toString() {
+    return this.variables
+      .map((v) => {
+        if (!v.value) {
+          return `${getTypeInfoText(v.type)} ${v.name};\n`;
+        }
+        return `${getTypeInfoText(v.type)} ${v.name} = ${v.value};\n`;
+      })
+      .join('');
+  }
+}
 
 type ScalarType = { name: 'int' } | { name: 'uint' } | { name: 'long' } | { name: 'ulong' };
 type DoubleInfo = { name: 'double' };
-type FunctionInfo = { name: 'function'; returnType: TypeInfo; useHeap: boolean };
+type FunctionInfo = { name: 'function'; returnType: TypeInfo };
 type GenFunctionInfo = { name: 'gfunction' };
 type ArrayInfo = { name: 'array'; contentType: TypeInfo };
 type ObjectInfo = {
@@ -12,7 +31,8 @@ type ObjectInfo = {
   global: boolean;
   reference?: boolean;
   objType: string;
-  orphan: boolean;
+  orphan?: boolean;
+  rvalue?: boolean;
   properties: Record<string, TypeInfo>;
 };
 
@@ -60,8 +80,12 @@ export class ExpressionParser {
     this._declarationTable = declarationTable;
   }
 
-  parseExpression(ast: recast.types.ASTNode, ignoreType = false): { val: string; type: TypeInfo } {
-    const parseExpression = (ast: recast.types.ASTNode) => this.parseExpression(ast);
+  parseExpression(
+    ast: recast.types.ASTNode,
+    context: ExpressionContext,
+    ignoreType = false,
+  ): { val: string; type: TypeInfo } {
+    const parseExpression = (otherAst: recast.types.ASTNode) => this.parseExpression(otherAst, context);
     const declarationTable = this._declarationTable;
     let val: string | null = null;
     let type: TypeInfo | null = null;
@@ -72,6 +96,11 @@ export class ExpressionParser {
           type = declarationTable.getVarType(path.node.name);
           if (type.name === 'object' && type.global) {
             type = { ...type, global: false };
+            val = `(*${val})`;
+          }
+
+          if (type.name === 'object' && type.reference) {
+            type = { ...type, reference: false };
             val = `(*${val})`;
           }
         }
@@ -125,19 +154,18 @@ export class ExpressionParser {
             name: 'object',
             global: false,
             objType: 'void',
-            orphan: false,
             properties: {
               INFINITY: { name: 'double' },
               M_PI: { name: 'double' },
-              get_global_id: { name: 'function', returnType: { name: 'int' }, useHeap: false },
-              int: { name: 'function', returnType: { name: 'int' }, useHeap: false },
-              uint: { name: 'function', returnType: { name: 'uint' }, useHeap: false },
-              long: { name: 'function', returnType: { name: 'long' }, useHeap: false },
-              ulong: { name: 'function', returnType: { name: 'ulong' }, useHeap: false },
-              sqrt: { name: 'function', returnType: { name: 'double' }, useHeap: false },
-              pow: { name: 'function', returnType: { name: 'double' }, useHeap: false },
-              sin: { name: 'function', returnType: { name: 'double' }, useHeap: false },
-              cos: { name: 'function', returnType: { name: 'double' }, useHeap: false },
+              get_global_id: { name: 'function', returnType: { name: 'int' } },
+              int: { name: 'function', returnType: { name: 'int' } },
+              uint: { name: 'function', returnType: { name: 'uint' } },
+              long: { name: 'function', returnType: { name: 'long' } },
+              ulong: { name: 'function', returnType: { name: 'ulong' } },
+              sqrt: { name: 'function', returnType: { name: 'double' } },
+              pow: { name: 'function', returnType: { name: 'double' } },
+              sin: { name: 'function', returnType: { name: 'double' } },
+              cos: { name: 'function', returnType: { name: 'double' } },
               array: { name: 'gfunction' },
             },
           };
@@ -189,7 +217,7 @@ export class ExpressionParser {
             if (ft == null) {
               throw new Error(`Bad member expression with this.func, "${property.name}" is not defined`);
             }
-            type = { name: 'function', returnType: ft.returnType, useHeap: true };
+            type = { name: 'function', returnType: ft.returnType };
           }
           val = path.node.property.name;
         } else if (
@@ -214,7 +242,7 @@ export class ExpressionParser {
             throw new Error(`Bad member expression with this.func, "${property.name}" is not defined`);
           }
           val = property.name;
-          type = { name: 'function', returnType: ft.returnType, useHeap: true };
+          type = { name: 'function', returnType: ft.returnType };
           // val = path.node.object.property.name;
           // type = that.type.properties[path.node.object.property.name];
         } else {
@@ -267,21 +295,27 @@ export class ExpressionParser {
         }
 
         const callee = parseExpression(path.node.callee);
-        const heapParams = `heap, next${path.node.arguments.length > 0 ? ', ' : ''}`;
         if (callee.type == null || callee.type.name !== 'function') {
           throw new Error(`Called expression must be a function and is ${JSON.stringify(callee)}`);
-          val = `${callee.val}(${heapParams}${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
+          val = `${callee.val}(${path.node.arguments.map((e) => parseExpression(e).val).join(', ')})`;
           return false;
         }
         // throw new Error(`Called expression must be a function and is ${JSON.stringify(callee)}`);
 
         type = callee.type.returnType;
-        val = `${callee.val}(${callee.type.useHeap ? heapParams : ''}${path.node.arguments
+        val = `${callee.val}(${path.node.arguments
           .map((e) => {
             const pe = parseExpression(e);
-            // if (pe.type.name === 'object') {
-            //   return `&(${pe.val})`;
-            // }
+
+            // pass objects by reference
+            if (pe.type.name === 'object' && !pe.type.reference) {
+              if (pe.type.rvalue) {
+                // handle rvalues
+                const name = context.declareVariable(pe.type, pe.val);
+                return `&(${name})`;
+              }
+              return `&(${pe.val})`;
+            }
             return pe.val;
           })
           .join(', ')})`;

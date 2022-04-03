@@ -1,6 +1,6 @@
 {
-  "include": ["lib/**/*", "test/**/*"],
-  "exclude": ["node_modules", "examples"],
+  "include": ["lib/**/*", "test"],
+  "exclude": ["node_modules", "examples", "./dist"],
   "compilerOptions": {
     "declaration": true,
     "experimentalDecorators": true,

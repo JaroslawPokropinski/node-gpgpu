@@ -1,5 +1,5 @@
 import * as recast from 'recast';
-import { ExpressionParser, getTypeInfoText } from './expressionParser';
+import { ExpressionContext, ExpressionParser, getTypeInfoText } from './expressionParser';
 import { DeclarationTable } from './declarationTable';
 
 export class StatementParser {
@@ -13,7 +13,8 @@ export class StatementParser {
 
   parseStatement(ast: recast.types.ASTNode): string {
     const parseStatement = (ast: recast.types.ASTNode) => this.parseStatement(ast);
-    const parseExpression = (ast: recast.types.ASTNode) => this._expressionParser.parseExpression(ast);
+    const context = new ExpressionContext();
+    const parseExpression = (ast: recast.types.ASTNode) => this._expressionParser.parseExpression(ast, context);
     const declarationTable = this._declarationTable;
 
     let val: string | null = null;
@@ -129,6 +130,6 @@ export class StatementParser {
     if (val == null) {
       throw new Error(`Failed to parse a statement (got null)`);
     }
-    return val;
+    return `${context.toString()}${val}`;
   }
 }

@@ -55,7 +55,7 @@ export default class ObjectSerializer {
             return [
               {
                 name: 'array',
-                contentType: { name: 'object', global: false, objType: name, properties, orphan: true },
+                contentType: { name: 'object', global: false, objType: name, properties, orphan: true, rvalue: true },
               },
               arr,
             ];
@@ -77,7 +77,7 @@ export default class ObjectSerializer {
           if (this._declarationTable != null) {
             const name = this._declarationTable.getObject(obj);
 
-            return [{ name: 'object', global: kparam, objType: name, properties, orphan: true }, arr];
+            return [{ name: 'object', global: kparam, objType: name, properties, orphan: true, rvalue: true }, arr];
           }
           return [null, arr];
         }
