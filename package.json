@@ -3,7 +3,7 @@
   "types": "./dist/binding.d.ts",
   "scripts": {
     "pretest": "tsc",
-    "test": "ts-mocha 'test/**/*.spec.?s' --reporter list",
+    "test": "jest",
     "build": "tsc",
     "watch": "tsc -w",
     "install": "prebuild-install -r napi --backend cmake-js || cmake-js rebuild",
