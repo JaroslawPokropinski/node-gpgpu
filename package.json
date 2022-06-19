@@ -13,7 +13,7 @@
     "prepare": "husky install"
   },
   "name": "gpgpu",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "JaroslawPokropinski",
   "license": "ISC",
   "description": "Node.js library for gpu acceleration using pure javascript",
