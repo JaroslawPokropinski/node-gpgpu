@@ -309,7 +309,7 @@ export class ExpressionParser {
 
             // pass objects by reference
             if (pe.type.name === 'object' && !pe.type.reference) {
-              if (pe.type.rvalue) {
+              if (pe.type.rvalue || pe.type.orphan) {
                 // handle rvalues
                 const name = context.declareVariable(pe.type, pe.val);
                 return `&(${name})`;
