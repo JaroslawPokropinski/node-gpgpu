@@ -1,9 +1,8 @@
-import { expect } from 'chai';
 import { Gpgpu, KernelContext, kernelFunction, kernelEntry, DeviceType, Types } from '../lib/binding';
 
 describe('Classes test', () => {
   it('is defined', () => {
-    expect(Gpgpu).to.be.not.undefined;
+    expect(Gpgpu).toBeTruthy();
   });
 
   const instance = new Gpgpu(DeviceType.default);
@@ -27,7 +26,7 @@ describe('Classes test', () => {
     const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
-    expect(arr).to.eql(new Float32Array(1000).fill(2));
+    expect(arr).toEqual(new Float32Array(1000).fill(2));
   });
 
   it('handles copying objects', async () => {
@@ -46,7 +45,7 @@ describe('Classes test', () => {
     const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
-    expect(arr).to.eql(new Float32Array(1000).map((_, i) => i));
+    expect(arr).toEqual(new Float32Array(1000).map((_, i) => i));
   });
 
   it('handles returning objects', async () => {
@@ -69,7 +68,7 @@ describe('Classes test', () => {
     const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
-    expect(arr).to.eql(new Float32Array(1000).map(() => 1));
+    expect(arr).toEqual(new Float32Array(1000).map(() => 1));
   });
 
   it('handles objects', async () => {
@@ -93,7 +92,30 @@ describe('Classes test', () => {
     const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
-    expect(arr).to.eql(new Float32Array(1000).map(() => 2));
+    expect(arr).toEqual(new Float32Array(1000).map(() => 2));
+  });
+
+  it('handles function with object args', async () => {
+    class MyKernel extends KernelContext {
+      @kernelFunction({ x: Types.number }, [{ x: Types.number }])
+      testObjLit(obj: { x: typeof Types.number }): { x: typeof Types.number } {
+        return { x: obj.x + 1 };
+      }
+
+      @kernelEntry([{ type: 'Float32Array', readWrite: 'readwrite' }])
+      main(out: Float32Array) {
+        const x = this.get_global_id(0);
+        const r = this.testObjLit({ x: 1 });
+        out[x] = r.x;
+      }
+    }
+    const arr = new Float32Array(1000);
+    arr.fill(1);
+
+    const fab = instance.createKernel(MyKernel).setSize([1000]);
+
+    await fab(arr);
+    expect(arr).toEqual(new Float32Array(1000).map(() => 2));
   });
 
   it('handles rvalues', async () => {
@@ -116,7 +138,7 @@ describe('Classes test', () => {
     const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
-    expect(arr).to.eql(new Float32Array(1000).map(() => 3));
+    expect(arr).toEqual(new Float32Array(1000).map(() => 3));
   });
 
   it('handles objects by reference', async () => {
@@ -131,7 +153,8 @@ describe('Classes test', () => {
       main(out: Float32Array) {
         const x = this.get_global_id(0);
         const v = { x: 1 };
-        const r = this.testFoo(v);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _r = this.testFoo(v);
         out[x] = v.x;
       }
     }
@@ -141,6 +164,6 @@ describe('Classes test', () => {
     const fab = instance.createKernel(MyKernel).setSize([1000]);
 
     await fab(arr);
-    expect(arr).to.eql(new Float32Array(1000).map(() => 2));
+    expect(arr).toEqual(new Float32Array(1000).map(() => 2));
   });
 });

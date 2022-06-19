@@ -1,11 +1,10 @@
-const { expect } = require('chai');
 import { Gpgpu } from '../lib/binding';
 
 describe('Basic test', () => {
   const instance = new Gpgpu();
 
   it('is defined', () => {
-    expect(Gpgpu).to.be.not.undefined;
+    expect(Gpgpu).toBeTruthy();
   });
 
   it('can run basic kernel', async () => {
@@ -32,7 +31,7 @@ describe('Basic test', () => {
     // const f2 = kernel.setSize([1000], [10]);
     await f1(arr1, arr2, arr3);
 
-    expect(arr3).to.eql(new Float32Array(1000).fill(1000));
+    expect(arr3).toEqual(new Float32Array(1000).fill(1000));
   });
 
   it('can have object args', async () => {
@@ -53,7 +52,7 @@ describe('Basic test', () => {
       )
       .setSize([1000], [10]);
     await fab({ x: 1337 }, arr);
-    expect(arr).to.eql(new Float32Array(1000).fill(1337));
+    expect(arr).toEqual(new Float32Array(1000).fill(1337));
   });
 
   it('can have array args', async () => {
@@ -80,7 +79,7 @@ describe('Basic test', () => {
       .setSize([1000], [10]);
     await fab({ y: true }, { x: 1337 }, arr);
 
-    expect(arr).to.eql(new Float32Array(1000).fill(1337));
+    expect(arr).toEqual(new Float32Array(1000).fill(1337));
   });
 
   it('can have object array args', async () => {
@@ -103,10 +102,10 @@ describe('Basic test', () => {
       )
       .setSize([1000], [10]);
 
-    expect(objArr).to.be.an('Array');
+    expect(Array.isArray(objArr)).toBeTruthy();
 
     await fab(objArr, arr);
-    expect(arr).to.eql(new Float32Array(1000).fill(4));
+    expect(arr).toEqual(new Float32Array(1000).fill(4));
   });
 
   it('can have function args', async () => {
@@ -139,6 +138,6 @@ describe('Basic test', () => {
       )
       .setSize([1000], [10]);
     await fab(objArr, arr);
-    expect(arr).to.eql(new Float32Array(1000).fill(8));
+    expect(arr).toEqual(new Float32Array(1000).fill(8));
   });
 });
