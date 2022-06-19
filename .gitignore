@@ -1,7 +1,7 @@
 # Built files
 /node_modules
 /build/Release
-/dist
+# /dist
 /out
 /build
 /.eslintcache
