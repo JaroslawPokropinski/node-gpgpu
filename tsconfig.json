@@ -1,5 +1,5 @@
 {
-  "include": ["lib/**/*", "test"],
+  "include": ["lib/**/*"],
   "exclude": ["node_modules", "examples", "./dist"],
   "compilerOptions": {
     "declaration": true,
@@ -7,7 +7,7 @@
     "lib": ["esnext", "dom"],
     "module": "commonjs",
     "outDir": "./dist",
-    "rootDirs": ["./lib", "./test"],
+    "rootDir": "./lib",
     "strict": true,
     "target": "es6",
     "noImplicitAny": false

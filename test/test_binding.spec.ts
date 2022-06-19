@@ -1,6 +1,5 @@
 const { expect } = require('chai');
 import { Gpgpu } from '../lib/binding';
-// const Gpgpu = require('../lib/binding.ts').Gpgpu;
 
 describe('Basic test', () => {
   const instance = new Gpgpu();
