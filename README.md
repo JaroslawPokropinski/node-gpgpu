@@ -8,9 +8,7 @@ To install and use node-gpgpu you will need cmake, opencl library and opencl run
 
 # Installation
 
-For now to install this package you have to clone repository and build it from scratch. Since it uses Napi in future installation will be as easy as calling `npm install ...`.
-
-You can also install it using `npm install JaroslawPokropinski/node-gpgpu`.
+`npm i node-gpgpu`
 
 # Build
 

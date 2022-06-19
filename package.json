@@ -12,7 +12,7 @@
     "upload": "prebuild -r napi --backend cmake-js -u",
     "prepare": "husky install"
   },
-  "name": "gpgpu",
+  "name": "node-gpgpu",
   "version": "0.0.6",
   "author": "JaroslawPokropinski",
   "license": "ISC",

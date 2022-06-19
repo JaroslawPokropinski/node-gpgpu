@@ -1,0 +1,20 @@
+# Built files
+/node_modules
+/build/Release
+/out
+/build
+/.eslintcache
+/coverage
+
+# Vscode enironment
+/.vscode
+/.vs
+
+# Files for experimentation
+/cpp example
+/examples
+/prebuilds
+/0.10.41
+
+# Secrets
+.prebuildrc
