@@ -15,8 +15,7 @@ To install and use node-gpgpu you will need cmake, opencl library and opencl run
 To build node-gpgpu one has to have opencl installed; after that call `npm i` and `npm run test` to verify build.
 
 # Examples
-
-One of examples is numerical ingetration on the gpu. More examples can be found in tests such as test/classes.spec.ts.
+One of examples is numerical ingetration on the gpu. More examples can be found in repository [node-gpgpu-examples](https://github.com/JaroslawPokropinski/node-gpgpu-examples) that contains code and links to google collab where you can execute it. You can also find some examples in tests such as test/classes.spec.ts.
 
 ```javascript
 import { Gpgpu, KernelContext, Types, kernelEntry, kernelFunction } from 'gpgpu';
