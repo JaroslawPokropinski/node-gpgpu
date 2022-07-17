@@ -18,7 +18,7 @@ To build node-gpgpu one has to have opencl installed; after that call `npm i` an
 One of examples is numerical ingetration on the gpu. More examples can be found in repository [node-gpgpu-examples](https://github.com/JaroslawPokropinski/node-gpgpu-examples) that contains code and links to google collab where you can execute it. You can also find some examples in tests such as test/classes.spec.ts.
 
 ```javascript
-import { Gpgpu, KernelContext, Types, kernelEntry, kernelFunction } from 'gpgpu';
+import { Gpgpu, KernelContext, Types, kernelEntry, kernelFunction } from 'node-gpgpu';
 async function main() {
   const n = 2000;
   const iter = 216;
@@ -48,7 +48,7 @@ async function main() {
     }
   }
 
-  const k = gpgpu.createKernel2(PiIntegralKernel).setSize([2000], [10]);
+  const k = gpgpu.createKernel(PiIntegralKernel).setSize([2000], [10]);
   const c = new Float32Array(n);
 
   await k(c, { n, iter });
