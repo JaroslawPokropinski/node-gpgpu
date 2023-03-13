@@ -57,3 +57,7 @@ async function main() {
 }
 main();
 ```
+# Roadmap
+- [ ] Array attributes: length, pop, push, maxLength, etc.
+- [ ] Math object: Math.random(), Math.floor(), etc.
+- [ ] Partial results: allow for getting multiple results from a kernel to limit memory being moved to the kernel.
